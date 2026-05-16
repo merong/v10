@@ -1,0 +1,41 @@
+{
+  "ads": [
+    {
+      "id": "ad-video-mp4",
+      "type": "video",
+      "src": "/mock/ads/sample-ad.mp4",
+      "mime": "video/mp4",
+      "duration": 10,
+      "skipAfter": 3,
+      "clickUrl": "https://videojs.com",
+      "trackingUrl": "/mock/ads/track"
+    },
+    {
+      "id": "ad-video-webm",
+      "type": "video",
+      "src": "/mock/ads/sample-ad.webm",
+      "mime": "video/webm",
+      "duration": 10,
+      "skipAfter": 3,
+      "clickUrl": "https://videojs.com"
+    },
+    {
+      "id": "ad-image-webp",
+      "type": "image",
+      "src": "/mock/ads/sample-ad.webp",
+      "mime": "image/webp",
+      "duration": 5,
+      "skipAfter": 3,
+      "clickUrl": "https://videojs.com"
+    },
+    {
+      "id": "ad-image-gif",
+      "type": "image",
+      "src": "/mock/ads/sample-ad.gif",
+      "mime": "image/gif",
+      "duration": 5,
+      "skipAfter": 3,
+      "clickUrl": "https://videojs.com"
+    }
+  ]
+}

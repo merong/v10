@@ -1,0 +1,611 @@
+---
+title: Add preroll ads
+description: Add preroll video and image ads to your player with skip controls, tracking, and a JSON API
+---
+
+import Aside from '@/components/Aside.astro';
+import DocsLink from '@/components/docs/DocsLink.astro';
+import { TabsRoot, TabsList, TabsPanel, Tab } from '@/components/Tabs.tsx';
+
+Video.js 10 includes a preroll ad framework that plays video or image ads before content. It provides an overlay UI with a timer, skip button, click-through, and event tracking — all driven by a JSON API.
+
+### Prerequisites
+
+- A working Video.js 10 player (<DocsLink slug="how-to/installation">Installation</DocsLink>)
+- A JSON endpoint that returns ad data (or a static JSON file for testing)
+
+## Step 1: Choose your bundle
+
+Two CDN bundles are available:
+
+| Bundle | Size | Use when |
+|--------|------|----------|
+| `video-ads.js` | ~110 KB | Starting fresh — includes Video.js 10 player and ads |
+| `videojs-ads.js` | ~3.7 KB | Adding ads to an existing Video.js 10 player |
+
+Build both bundles from source:
+
+```bash
+# Install dependencies and build all packages
+pnpm install
+pnpm build:packages
+
+# Build CDN bundles
+pnpm -F @videojs/ads build:cdn
+```
+
+Output files land in `packages/ads/cdn/`:
+
+```
+packages/ads/cdn/
+├── video-ads.js          # Player + ads (production, minified)
+├── video-ads.dev.js      # Player + ads (development, with warnings)
+├── videojs-ads.js        # Ads only (production, minified)
+└── videojs-ads.dev.js    # Ads only (development, with warnings)
+```
+
+## Step 2: Add the player markup
+
+Copy the bundle and skin CSS to your web server, then add the player to your page:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/videojs/skin.css">
+  <style>
+    .player-wrapper {
+      position: relative; /* Required — ad overlay positions against this */
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="player-wrapper" id="player-wrapper">
+    <video-player>
+      <video-skin style="aspect-ratio: 16/9;">
+        <video
+          src="https://example.com/content.mp4"
+          playsinline
+          crossorigin="anonymous"
+        ></video>
+      </video-skin>
+    </video-player>
+  </div>
+
+  <script type="module">
+    import { AdsOverlay, fetchAds, trackAdEvent } from '/videojs/video-ads.js';
+    // ... ad setup in the next step
+  </script>
+</body>
+</html>
+```
+
+<Aside type="caution">
+The wrapper `div` must have `position: relative`. The ad overlay uses `position: absolute` and `inset: 0` to cover the player. Without a positioned ancestor, the overlay won't align correctly.
+</Aside>
+
+The skin CSS file is at `packages/html/dist/default/define/video/skin.css` after building. The ad overlay CSS is auto-injected via a `<style>` tag — no extra CSS import needed.
+
+### Video element attributes
+
+The `<video>` element accepts standard HTML attributes that control player behavior:
+
+| Attribute | Value | Description |
+|-----------|-------|-------------|
+| `src` | URL | Video source URL |
+| `playsinline` | boolean | Play inline on mobile instead of entering fullscreen |
+| `crossorigin` | `"anonymous"` or `"use-credentials"` | CORS mode for the video resource |
+| `poster` | URL | Image shown before playback starts |
+| `preload` | `"auto"`, `"metadata"`, or `"none"` | How much data to preload |
+| `autoplay` | boolean | Start playing when ready (requires `muted` on most browsers) |
+| `muted` | boolean | Start with audio muted |
+| `loop` | boolean | Restart when playback finishes |
+
+Multiple sources with format fallback:
+
+```html
+<video playsinline crossorigin="anonymous">
+  <source src="/content.mp4" type="video/mp4">
+  <source src="/content.webm" type="video/webm">
+</video>
+```
+
+### Poster image
+
+Add a poster with the `poster` attribute or the `<img slot="poster">` element:
+
+```html
+<video-player>
+  <video-skin style="aspect-ratio: 16/9;">
+    <video src="/content.mp4" playsinline crossorigin="anonymous"></video>
+    <img slot="poster" src="/poster.jpg" alt="Video poster" />
+  </video-skin>
+</video-player>
+```
+
+### Aspect ratio
+
+Set the player's aspect ratio on the `<video-skin>` element:
+
+```html
+{/* 16:9 (default widescreen) */}
+<video-skin style="aspect-ratio: 16/9;">
+
+{/* 4:3 (classic) */}
+<video-skin style="aspect-ratio: 4/3;">
+
+{/* 21:9 (ultrawide) */}
+<video-skin style="aspect-ratio: 21/9;">
+```
+
+## Step 3: Load ads and set up preroll
+
+The `video-ads.js` bundle exports three functions:
+
+| Export | Purpose |
+|--------|---------|
+| `fetchAds(url, signal?)` | Fetch ad data from a JSON endpoint. Returns `Ad[]` (empty on error). |
+| `AdsOverlay(container)` | Create an overlay UI on a container element. |
+| `trackAdEvent(url, event, extra?)` | Send a tracking event via POST (fire-and-forget). |
+
+Wire them together to intercept the first play and show a preroll ad:
+
+```html
+<script type="module">
+  import { AdsOverlay, fetchAds, trackAdEvent } from '/videojs/video-ads.js';
+
+  const wrapper = document.getElementById('player-wrapper');
+  const video = document.querySelector('video');
+  const overlay = new AdsOverlay(wrapper);
+
+  // Fetch ads — returns [] on network error (content plays normally)
+  const ads = await fetchAds('/api/ads.json');
+
+  if (ads.length > 0) {
+    const ad = ads[Math.floor(Math.random() * ads.length)];
+    let adPlayed = false;
+
+    video.addEventListener('play', function onPlay() {
+      if (adPlayed) return;
+      adPlayed = true;
+      video.removeEventListener('play', onPlay);
+      video.pause();
+
+      // Show ad media (video or image)
+      overlay.showAd(ad, () => {
+        trackAdEvent(ad.trackingUrl, 'click', { adId: ad.id });
+        if (ad.clickUrl) window.open(ad.clickUrl, '_blank');
+      });
+
+      // Track impression
+      trackAdEvent(ad.trackingUrl, 'impression', { adId: ad.id });
+
+      // Enable skip button
+      overlay.onSkip(() => {
+        trackAdEvent(ad.trackingUrl, 'skip', { adId: ad.id });
+        finish();
+      });
+
+      // Timer loop
+      const start = performance.now();
+      let raf = 0;
+
+      function tick() {
+        const elapsed = (performance.now() - start) / 1000;
+        overlay.updateTimer(elapsed, ad.duration);
+
+        const canSkip = ad.skipAfter > 0 && elapsed >= ad.skipAfter;
+        overlay.updateSkip(canSkip, Math.max(0, Math.ceil(ad.skipAfter - elapsed)));
+
+        if (elapsed >= ad.duration) {
+          trackAdEvent(ad.trackingUrl, 'complete', { adId: ad.id });
+          finish();
+          return;
+        }
+        raf = requestAnimationFrame(tick);
+      }
+
+      function finish() {
+        cancelAnimationFrame(raf);
+        overlay.hide();
+        video.play().catch(() => {});
+      }
+
+      raf = requestAnimationFrame(tick);
+    });
+  }
+</script>
+```
+
+The preroll flow:
+
+1. User clicks play
+2. `play` event fires — the handler pauses the content video
+3. `overlay.showAd()` displays the ad media (auto-playing `<video>` or `<img>`)
+4. `requestAnimationFrame` loop updates the timer and skip button state
+5. When the ad completes or is skipped, `finish()` hides the overlay and resumes content
+6. Subsequent plays skip the ad (`adPlayed` flag)
+
+## Step 4: Provide ad data
+
+The JSON endpoint returns an object with an `ads` array:
+
+```json
+{
+  "ads": [
+    {
+      "id": "ad-001",
+      "type": "video",
+      "src": "/ads/promo.mp4",
+      "mime": "video/mp4",
+      "duration": 10,
+      "skipAfter": 3,
+      "clickUrl": "https://example.com/landing",
+      "trackingUrl": "/api/ads/track"
+    }
+  ]
+}
+```
+
+### Required fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique ad identifier |
+| `type` | `"video"` or `"image"` | Media type |
+| `src` | `string` | Media file URL |
+| `mime` | `string` | MIME type (`video/mp4`, `video/webm`, `image/webp`, `image/gif`) |
+| `duration` | `number` | Display time in seconds |
+| `skipAfter` | `number` | Seconds before skip is available (0 = no skip) |
+
+### Optional fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `clickUrl` | `string` | URL to open when the ad is clicked |
+| `trackingUrl` | `string` | Endpoint for tracking events (POST) |
+
+### Supported media formats
+
+| Format | `type` | Rendering |
+|--------|--------|-----------|
+| MP4 | `video` | `<video>` element, autoplay |
+| WebM | `video` | `<video>` element, autoplay |
+| WebP | `image` | `<img>` element, timer-based duration |
+| GIF | `image` | `<img>` element, timer-based duration |
+
+<Aside type="tip">
+`fetchAds` validates each ad object and filters out invalid entries. If the endpoint returns malformed data or the request fails, it returns an empty array — content plays normally without ads.
+</Aside>
+
+## Step 5: Handle tracking events
+
+When `trackingUrl` is set, `trackAdEvent` sends a POST request with `keepalive: true` (survives page navigation). Four events are supported:
+
+| Event | When | Payload |
+|-------|------|---------|
+| `impression` | Ad starts playing | `{ event: "impression", adId }` |
+| `complete` | Ad finishes (watched in full) | `{ event: "complete", adId }` |
+| `skip` | User clicks skip | `{ event: "skip", adId, time }` |
+| `click` | User clicks the ad | `{ event: "click", adId }` |
+
+Tracking is fire-and-forget — failures are silently ignored. Ads without a `trackingUrl` skip tracking entirely.
+
+## Overlay UI
+
+The overlay renders on top of the player:
+
+```
+┌─────────────────────────────────────────┐
+│  [Ad media — video or image, full cover] │
+│                                          │
+│  ┌────────────────┐    ┌───────────────┐ │
+│  │ AD 0:05 / 0:15 │    │ 3초 후 건너뛰기│ │
+│  └────────────────┘    └───────────────┘ │
+└─────────────────────────────────────────┘
+```
+
+- **Timer** (bottom-left): Shows elapsed and total time in `AD M:SS / M:SS` format
+- **Skip button** (bottom-right): Counts down until `skipAfter` seconds, then becomes clickable. Set `skipAfter: 0` to disable skipping entirely.
+
+### AdsOverlay API
+
+```ts
+const overlay = new AdsOverlay(container);
+
+overlay.showAd(ad, onClick?);                  // Display ad media
+overlay.updateTimer(currentSeconds, totalSeconds); // Update timer text
+overlay.updateSkip(available, countdown);       // Update skip button state
+overlay.onSkip(callback);                       // Register skip handler
+overlay.hide();                                 // Hide overlay
+overlay.destroy();                              // Remove from DOM (idempotent)
+```
+
+## Customize the player theme
+
+The player skin exposes CSS custom properties for theming. Override them on `video-skin` or a parent element.
+
+### Core appearance
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `--media-border-radius` | `2rem` (default), `0.75rem` (minimal) | Player corner radius |
+| `--media-color-primary` | `oklch(1 0 0)` (white) | Icon, text, and control color |
+| `--media-border-color` | `oklch(0 0 0 / 0.1)` | Inner border ring color |
+| `--media-object-fit` | `contain` | How the video fills its container (`contain`, `cover`, `fill`) |
+| `--media-object-position` | `center` | Video position within the container |
+| `--media-video-border-radius` | `var(--media-border-radius)` | Video element corner radius (separate from skin) |
+
+### Surface (glass effect on controls, tooltips, popovers)
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `--media-surface-background-color` | `oklch(1 0 0 / 0.1)` | Glass background color |
+| `--media-surface-backdrop-filter` | `blur(16px) saturate(1.5)` | Glass blur effect |
+| `--media-surface-inner-border-color` | `oklch(1 0 0 / 0.05)` | Inner glass border |
+| `--media-surface-outer-border-color` | `oklch(0 0 0 / 0.1)` | Outer glass border |
+| `--media-surface-shadow-color` | `oklch(0 0 0 / 0.15)` | Glass shadow |
+
+### Controls animation
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `--media-controls-transition-duration` | `100ms` | Show/hide animation speed |
+| `--media-controls-transition-delay` | `0ms` (show), `500ms` (hide, pointer:fine) | Delay before animation |
+| `--media-controls-transition-timing-function` | `ease-out` | Animation easing |
+
+### Popups and captions
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `--media-popup-transition-duration` | `100ms` | Popup animation speed |
+| `--media-popover-side-offset` | `0.5rem` | Gap between popover and trigger |
+| `--media-tooltip-side-offset` | `0.75rem` | Gap between tooltip and trigger |
+| `--media-caption-track-y` | `-0.5rem` / `-3.5rem` | Caption vertical offset (adjusts when controls are visible) |
+
+### Example: custom theme
+
+```html
+<video-player>
+  <video-skin style="
+    aspect-ratio: 16/9;
+    --media-border-radius: 0.5rem;
+    --media-color-primary: #f0c040;
+    --media-surface-background-color: rgba(0, 0, 0, 0.6);
+    --media-surface-backdrop-filter: blur(24px) saturate(2);
+  ">
+    <video src="/content.mp4" playsinline crossorigin="anonymous"></video>
+  </video-skin>
+</video-player>
+```
+
+Or apply globally via CSS:
+
+```css
+video-skin {
+  --media-border-radius: 0.5rem;
+  --media-color-primary: #f0c040;
+}
+```
+
+<Aside type="tip">
+The player responds to `prefers-color-scheme: dark` and `prefers-reduced-motion: reduce` media queries automatically. Border colors adjust in dark mode, and animations are shortened or disabled when the user prefers reduced motion.
+</Aside>
+
+## Customize the ad overlay
+
+The ad overlay uses `.vjs-ads-*` CSS classes. Override them after the overlay initializes (styles are injected via a `<style id="vjs-ads-overlay-style">` tag).
+
+### Default classes
+
+| Class | Element | Description |
+|-------|---------|-------------|
+| `.vjs-ads-overlay` | Root container | Covers the player with `position: absolute; inset: 0; z-index: 100` |
+| `.vjs-ads-media` | Video or image | Full-size ad media with `object-fit: contain` |
+| `.vjs-ads-timer` | Timer badge | Bottom-left, shows `AD M:SS / M:SS` |
+| `.vjs-ads-skip` | Skip button | Bottom-right, countdown then clickable |
+
+### Example: custom ad overlay style
+
+```css
+/* Change ad overlay background */
+.vjs-ads-overlay {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+/* Style the timer badge */
+.vjs-ads-timer {
+  background: rgba(255, 200, 0, 0.9);
+  color: #000;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+/* Style the skip button */
+.vjs-ads-skip {
+  background: rgba(255, 200, 0, 0.9);
+  color: #000;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+}
+.vjs-ads-skip[data-skip-available='true']:hover {
+  background: rgba(255, 220, 50, 1);
+}
+
+/* Cover vs contain for ad media */
+.vjs-ads-media {
+  object-fit: cover;
+}
+```
+
+### Data attributes for state-based styling
+
+The overlay uses data attributes to reflect its state:
+
+| Selector | When |
+|----------|------|
+| `.vjs-ads-overlay[data-ad-phase='playing']` | Ad is currently showing |
+| `.vjs-ads-overlay[data-ad-phase='hidden']` | Ad is hidden |
+| `.vjs-ads-skip[data-skip-available='true']` | Skip button is clickable |
+| `.vjs-ads-skip[data-skip-available='false']` | Skip button is in countdown |
+
+## Multiple players on one page
+
+Create a separate `AdsOverlay` for each player:
+
+```js
+document.querySelectorAll('.player-wrapper').forEach(async (wrapper) => {
+  const video = wrapper.querySelector('video');
+  const overlay = new AdsOverlay(wrapper);
+  const ads = await fetchAds('/api/ads.json');
+
+  if (ads.length > 0) {
+    const ad = ads[Math.floor(Math.random() * ads.length)];
+    // ... same preroll setup per player
+  }
+});
+```
+
+## Complete example
+
+A full page with a themed player, custom ad overlay styling, and preroll ads:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video with Preroll Ad</title>
+  <link rel="stylesheet" href="/videojs/skin.css">
+  <style>
+    .player-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    /* Custom ad overlay theme */
+    .vjs-ads-timer {
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 6px;
+    }
+    .vjs-ads-skip {
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="player-wrapper" id="player-wrapper">
+    <video-player>
+      <video-skin style="
+        aspect-ratio: 16/9;
+        --media-border-radius: 1rem;
+        --media-color-primary: oklch(1 0 0);
+      ">
+        <video
+          src="https://stream.mux.com/VcmKA6aqzIzlg3MayLJDnbF55kX00mds028Z65QxvBYaA/high.mp4"
+          poster="/poster.jpg"
+          playsinline
+          crossorigin="anonymous"
+          preload="metadata"
+        ></video>
+        <img slot="poster" src="/poster.jpg" alt="Video poster" />
+      </video-skin>
+    </video-player>
+  </div>
+
+  <script type="module">
+    import { AdsOverlay, fetchAds, trackAdEvent } from '/videojs/video-ads.js';
+
+    const wrapper = document.getElementById('player-wrapper');
+    const video = document.querySelector('video');
+    const overlay = new AdsOverlay(wrapper);
+    const ads = await fetchAds('/api/ads.json');
+
+    if (ads.length > 0) {
+      const ad = ads[Math.floor(Math.random() * ads.length)];
+      let adPlayed = false;
+
+      video.addEventListener('play', function onPlay() {
+        if (adPlayed) return;
+        adPlayed = true;
+        video.removeEventListener('play', onPlay);
+        video.pause();
+
+        overlay.showAd(ad, () => {
+          trackAdEvent(ad.trackingUrl, 'click', { adId: ad.id });
+          if (ad.clickUrl) window.open(ad.clickUrl, '_blank');
+        });
+
+        trackAdEvent(ad.trackingUrl, 'impression', { adId: ad.id });
+
+        overlay.onSkip(() => {
+          trackAdEvent(ad.trackingUrl, 'skip', { adId: ad.id });
+          finish();
+        });
+
+        const start = performance.now();
+        let raf = 0;
+
+        function tick() {
+          const elapsed = (performance.now() - start) / 1000;
+          overlay.updateTimer(elapsed, ad.duration);
+
+          const canSkip = ad.skipAfter > 0 && elapsed >= ad.skipAfter;
+          overlay.updateSkip(canSkip, Math.max(0, Math.ceil(ad.skipAfter - elapsed)));
+
+          if (elapsed >= ad.duration) {
+            trackAdEvent(ad.trackingUrl, 'complete', { adId: ad.id });
+            finish();
+            return;
+          }
+          raf = requestAnimationFrame(tick);
+        }
+
+        function finish() {
+          cancelAnimationFrame(raf);
+          overlay.hide();
+          video.play().catch(() => {});
+        }
+
+        raf = requestAnimationFrame(tick);
+      });
+    }
+  </script>
+</body>
+</html>
+```
+
+## Troubleshooting
+
+### Ad overlay appears behind the player
+
+The wrapper `div` needs `position: relative`. The overlay uses `z-index: 100` — check for conflicting z-index values on parent elements.
+
+### Ad video doesn't autoplay
+
+Browser autoplay policies require a user gesture. The preroll pattern works because the user clicks play first, giving the browser permission to play media. If autoplay fails silently, check that the ad media URL is accessible and the MIME type matches.
+
+### Ads don't load but content plays fine
+
+This is by design. `fetchAds` returns an empty array on any error (network failure, invalid JSON, malformed response). Check the browser console Network tab for the ads endpoint response.
+
+### `<script type="module">` and top-level await
+
+The ad setup uses top-level `await` inside a module script. This works in all modern browsers (Chrome 89+, Firefox 89+, Safari 15+). For older browsers, wrap the code in an async IIFE:
+
+```js
+(async () => {
+  const ads = await fetchAds('/api/ads.json');
+  // ...
+})();
+```

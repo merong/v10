@@ -58,6 +58,7 @@ function serveAppShell(): Plugin {
 
 export default defineConfig({
   root: 'src',
+  publicDir: resolve(__dirname, 'public'),
   appType: 'mpa',
   plugins: [tailwindcss(), react(), serveAppShell()],
   resolve: {
@@ -68,6 +69,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: [
+      '@videojs/ads',
       '@videojs/core',
       '@videojs/html',
       '@videojs/icons',

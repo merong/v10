@@ -29,6 +29,8 @@
     { "path": "packages/spf/src/playback/actors/dom" },
     { "path": "packages/spf/src/playback/engines/hls" },
 
+    { "path": "packages/ads" },
+
     { "path": "packages/html" },
     { "path": "packages/react" },
 

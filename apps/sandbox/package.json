@@ -11,6 +11,7 @@
     "sync": "tsx scripts/sync.ts"
   },
   "dependencies": {
+    "@videojs/ads": "workspace:*",
     "@videojs/core": "workspace:*",
     "@videojs/html": "workspace:*",
     "@videojs/icons": "workspace:*",

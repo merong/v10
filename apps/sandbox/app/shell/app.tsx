@@ -18,6 +18,7 @@ import { Preview } from './preview';
 function getPagePath(platform: Platform, preset: Preset): string {
   if (platform === 'cdn') return '/cdn/';
   if (preset === 'background-video') return `/${platform}-background-video/`;
+  if (preset === 'video-ads') return '/html-video-ads/';
   return `/${platform}-${preset}/`;
 }
 
