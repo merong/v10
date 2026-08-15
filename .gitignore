@@ -152,6 +152,7 @@ bun.lockb
 # -------------------------
 # AI Agent Config (Generated)
 # -------------------------
+/.claude/
 /.claude/settings.local.json
 /.claude/worktrees/
 /.claude/skills
