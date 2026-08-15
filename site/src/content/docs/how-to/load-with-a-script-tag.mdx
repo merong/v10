@@ -1,0 +1,153 @@
+---
+title: Load the player with a script tag
+description: Add the player to a plain HTML page from the CDN, as one bundled ES module, or as one classic script
+---
+
+import Aside from '@/components/Aside.astro';
+import DocsLink from '@/components/docs/DocsLink.astro';
+
+The player is a set of custom elements, so a plain HTML page only needs to load the script that registers them and then write the markup. There is no init call and no options object to pass.
+
+You have three ways to load that script. They produce the same player; they differ in how many files the browser fetches and whether the page can use ES modules.
+
+<Aside type="tip" title="Which option?">
+Load from the CDN when you have no build step. Bundle one ES module when you want a single file you host yourself. Bundle one classic script when the page cannot use `type="module"`.
+</Aside>
+
+| Option | Script tag | Files fetched | Build step |
+| --- | --- | --- | --- |
+| CDN | `<script type="module">` | Entry plus shared chunks | None |
+| One ES module | `<script type="module">` | One | Yes |
+| One classic script | `<script>` | One | Yes |
+
+Every option ships its own CSS. The skin styles live inside each element's shadow root, so no `<link rel="stylesheet">` is involved.
+
+## Load from the CDN
+
+Point a script tag at the entry for the player you want. This is what <DocsLink slug="how-to/installation">installation</DocsLink> gives you.
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/@videojs/html/cdn/video.js"></script>
+```
+
+The file name matches the player: `video.js`, `audio.js`, `live-video.js`, `background.js`, and the `-minimal` and `-headless` variants of each.
+
+<Aside type="caution" title="Entries are not standalone">
+CDN entries import shared, content-hashed chunks that sit next to them. The browser resolves those relative to the entry, which is why this option needs `type="module"`. If you mirror these files, copy the whole `cdn/` directory — see <DocsLink slug="how-to/self-host-the-player">self-host the player</DocsLink>.
+</Aside>
+
+## Bundle one ES module
+
+When you want a single file on your own origin, put the imports in an entry file and let any bundler produce one module.
+
+```js title="player.js"
+import '@videojs/html/video/player';
+import '@videojs/html/video/skin';
+```
+
+```bash
+npm install @videojs/html
+npx esbuild player.js --bundle --format=esm --minify --outfile=public/player.js
+```
+
+```html
+<script type="module" src="/player.js"></script>
+```
+
+One request, no CDN traffic, and only the parts you imported. Vite, Rollup, and webpack all work as long as the output stays ESM.
+
+## Bundle one classic script
+
+Some pages cannot use `type="module"` — a CMS template that injects scripts without attributes, or a host that has to support browsers without module support. Build the same entry file as an IIFE instead.
+
+```bash
+npx esbuild player.js --bundle --format=iife --minify --target=es2022 --outfile=public/player.js
+```
+
+```html
+<script src="/player.js"></script>
+```
+
+This works because the player has no top-level `await` and no dynamic imports, so nothing in it depends on module semantics. The bundle registers the elements as soon as it runs, and the parser upgrades them as it reaches the markup.
+
+<Aside type="note">
+Custom elements and shadow DOM still need a modern browser. Dropping `type="module"` changes how the file is delivered, not what the player requires. See <DocsLink slug="concepts/browser-support">browser support</DocsLink>.
+</Aside>
+
+## Write the markup
+
+Whichever option you picked, the markup is the same. The player element provides state, the skin element draws the controls, and the media element holds the source.
+
+```html
+<video-player>
+  <video-skin>
+    <video src="/video.mp4" playsinline crossorigin="anonymous"></video>
+  </video-skin>
+</video-player>
+```
+
+Configuration lives on the media element, using the attributes you already know from `<video>`: `src`, `muted`, `autoplay`, `loop`, `playsinline`, `preload`, and `crossorigin`.
+
+Give the skin a size. It fills its container, and a container with no height collapses to nothing.
+
+```css
+video-skin {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+```
+
+## Play HLS and other media types
+
+The default `<video>` element plays what the browser plays. Other media types need their own module on top of the player, and their own element in the markup.
+
+For the CDN, add a second script tag:
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/@videojs/html/cdn/video.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@videojs/html/cdn/media/hlsjs-video.js"></script>
+```
+
+For a bundle, add the import to your entry file:
+
+```js title="player.js"
+import '@videojs/html/video/player';
+import '@videojs/html/video/skin';
+import '@videojs/html/media/hlsjs-video';
+```
+
+Then swap the element and point it at your manifest:
+
+```html
+<video-player>
+  <video-skin>
+    <hlsjs-video src="/stream.m3u8" playsinline crossorigin="anonymous"></hlsjs-video>
+  </video-skin>
+</video-player>
+```
+
+<Aside type="note" title="Bundle size">
+hls.js is roughly half of a bundle that includes it. If your sources play natively, `<hls-video>` is a much smaller HLS element, and leaving the import out altogether keeps the bundle smallest. See <DocsLink slug="concepts/media-sources">media sources</DocsLink>.
+</Aside>
+
+## Translate the controls
+
+Controls carry English labels out of the box, so a page that ships in English needs nothing extra. To translate them, wrap the player in the i18n provider and register a locale.
+
+```html
+<video-player>
+  <media-i18n>
+    <video-skin>
+      <video src="/video.mp4" playsinline></video>
+    </video-skin>
+  </media-i18n>
+</video-player>
+```
+
+See <DocsLink slug="how-to/i18n-register-locale">register a locale</DocsLink> for the matching script.
+
+## What's next?
+
+- <DocsLink slug="how-to/self-host-the-player">Self-host the player</DocsLink> for release archives and mirroring the CDN layout
+- <DocsLink slug="concepts/media-sources">Media sources</DocsLink> for choosing between the HLS and DASH elements
+- <DocsLink slug="concepts/skins">Skins</DocsLink> for changing how the controls look
