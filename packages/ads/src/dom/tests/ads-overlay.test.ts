@@ -113,4 +113,67 @@ describe('AdsOverlay', () => {
     overlay.destroy(); // should not throw
     expect(container.querySelector('.vjs-ads-overlay')).toBeNull();
   });
+
+  describe('labels', () => {
+    it('defaults to English', () => {
+      const container = document.createElement('div');
+      const overlay = new AdsOverlay(container);
+      const skip = container.querySelector('.vjs-ads-skip') as HTMLElement;
+
+      expect(skip.textContent).toBe('Skip ad');
+
+      overlay.updateSkip(false, 3);
+      expect(skip.textContent).toBe('Skip in 3s');
+
+      overlay.updateSkip(true, 0);
+      expect(skip.textContent).toBe('Skip ad');
+    });
+
+    it('overrides the skip labels', () => {
+      const container = document.createElement('div');
+      const overlay = new AdsOverlay(container, {
+        labels: {
+          skip: '광고 건너뛰기',
+          skipCountdown: (seconds) => `${seconds}초 후 건너뛰기`,
+        },
+      });
+      const skip = container.querySelector('.vjs-ads-skip') as HTMLElement;
+
+      expect(skip.textContent).toBe('광고 건너뛰기');
+
+      overlay.updateSkip(false, 5);
+      expect(skip.textContent).toBe('5초 후 건너뛰기');
+    });
+
+    it('overrides the timer readout', () => {
+      const container = document.createElement('div');
+      const overlay = new AdsOverlay(container, {
+        labels: { timer: (elapsed, duration) => `광고 ${elapsed} / ${duration}` },
+      });
+
+      overlay.updateTimer(5.2, 15);
+      expect(container.querySelector('.vjs-ads-timer')?.textContent).toBe('광고 0:05 / 0:15');
+    });
+
+    it('overrides the image ad alt text', () => {
+      const container = document.createElement('div');
+      const overlay = new AdsOverlay(container, { labels: { mediaAlt: '광고' } });
+
+      overlay.showAd({ id: 'ad-1', type: 'image', src: '/a.webp', mime: 'image/webp', duration: 5, skipAfter: 3 });
+
+      expect(container.querySelector('img.vjs-ads-media')?.getAttribute('alt')).toBe('광고');
+    });
+
+    it('keeps the defaults that were not overridden', () => {
+      const container = document.createElement('div');
+      const overlay = new AdsOverlay(container, { labels: { skip: 'Skip' } });
+      const skip = container.querySelector('.vjs-ads-skip') as HTMLElement;
+
+      expect(skip.textContent).toBe('Skip');
+
+      // Untouched, so still the English default rather than undefined.
+      overlay.updateSkip(false, 2);
+      expect(skip.textContent).toBe('Skip in 2s');
+    });
+  });
 });

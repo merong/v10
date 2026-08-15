@@ -54,11 +54,35 @@ Point `ADS_URL` in `preroll.js` at your own endpoint when you adapt this — the
 
 The overlay is absolutely positioned, so it needs a container that establishes a positioning context. That is the one non-obvious piece of the markup, and the only reason the pages wrap the player in `<div class="player">`.
 
+## Overlay text
+
+`AdsOverlay` renders four pieces of text, all in English by default. Pass `labels` to change any of them; anything you leave out keeps its default.
+
+```js
+new AdsOverlay(container, {
+  labels: {
+    skip: '광고 건너뛰기',
+    skipCountdown: (seconds) => `${seconds}초 후 건너뛰기`,
+    timer: (elapsed, duration) => `광고 ${elapsed} / ${duration}`,
+    mediaAlt: '광고',
+  },
+});
+```
+
+| Label | Default | Shown |
+| --- | --- | --- |
+| `skip` | `Skip ad` | On the button once skipping is allowed |
+| `skipCountdown(seconds)` | `Skip in 3s` | On the button before `skipAfter` elapses |
+| `timer(elapsed, duration)` | `AD 0:05 / 0:10` | Bottom-left readout, times pre-formatted as `m:ss` |
+| `mediaAlt` | `Advertisement` | `alt` on an image ad |
+
+The countdown and timer are functions rather than templates because the number does not sit in the same position in every language.
+
+These labels do not go through the player's translation registry — an overlay is constructed directly, not resolved from the player's locale, so you pass the strings you want.
+
 ## Known limits
 
 The ad timer runs on `requestAnimationFrame`, so it stalls while the tab is in the background and then resumes out of step with the ad media. `AdsOverlay` does not expose its media element, so a consumer cannot drive the timer from actual playback instead.
-
-The skip button label is hardcoded and does not go through the player's translation registry.
 
 ## Related
 

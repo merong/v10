@@ -10175,7 +10175,7 @@ const TOGGLE_LABELS = {
 	duration: showDurationText,
 	remaining: showRemainingText
 };
-const DEFAULT_LABELS = {
+const DEFAULT_LABELS$1 = {
 	current: currentText,
 	duration: durationText,
 	remaining: remainingText
@@ -10241,7 +10241,7 @@ var TimeCore = class TimeCore {
 	getLabel(state, type = this.#props.type) {
 		const custom = resolveLabel(this.#props.label, state);
 		if (custom !== void 0) return custom;
-		if (!this.#props.toggle) return DEFAULT_LABELS[this.#props.type];
+		if (!this.#props.toggle) return DEFAULT_LABELS$1[this.#props.type];
 		return TOGGLE_LABELS[this.#getToggleType(type, state.type)];
 	}
 	getLabelParams(state) {
@@ -14931,6 +14931,12 @@ function injectStyles() {
 function formatTime(seconds) {
 	return `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, "0")}`;
 }
+const DEFAULT_LABELS = {
+	skip: "Skip ad",
+	skipCountdown: (seconds) => `Skip in ${seconds}s`,
+	timer: (elapsed, duration) => `AD ${elapsed} / ${duration}`,
+	mediaAlt: "Advertisement"
+};
 var AdsOverlay = class {
 	#root;
 	#timer;
@@ -14939,8 +14945,13 @@ var AdsOverlay = class {
 	#adMedia = null;
 	#onSkip = null;
 	#destroyed = false;
-	constructor(container) {
+	#labels;
+	constructor(container, options = {}) {
 		injectStyles();
+		this.#labels = {
+			...DEFAULT_LABELS,
+			...options.labels
+		};
 		this.#root = document.createElement("div");
 		this.#root.className = "vjs-ads-overlay";
 		this.#root.dataset.adPhase = "hidden";
@@ -14948,12 +14959,12 @@ var AdsOverlay = class {
 		this.#mediaContainer.style.cssText = "width:100%;height:100%;display:flex;align-items:center;justify-content:center;";
 		this.#timer = document.createElement("div");
 		this.#timer.className = "vjs-ads-timer";
-		this.#timer.textContent = "AD 0:00";
+		this.#timer.textContent = this.#labels.timer(formatTime(0), formatTime(0));
 		this.#skip = document.createElement("button");
 		this.#skip.className = "vjs-ads-skip";
 		this.#skip.type = "button";
 		this.#skip.dataset.skipAvailable = "false";
-		this.#skip.textContent = "광고 건너뛰기";
+		this.#skip.textContent = this.#labels.skip;
 		this.#skip.addEventListener("click", () => {
 			if (this.#skip.dataset.skipAvailable === "true" && this.#onSkip) this.#onSkip();
 		});
@@ -14978,7 +14989,7 @@ var AdsOverlay = class {
 			const img = document.createElement("img");
 			img.className = "vjs-ads-media";
 			img.src = ad.src;
-			img.alt = "Advertisement";
+			img.alt = this.#labels.mediaAlt;
 			if (onClick) img.addEventListener("click", onClick);
 			this.#mediaContainer.appendChild(img);
 			this.#adMedia = img;
@@ -14986,11 +14997,11 @@ var AdsOverlay = class {
 		this.#root.dataset.adPhase = "playing";
 	}
 	updateTimer(currentTime, duration) {
-		this.#timer.textContent = `AD ${formatTime(currentTime)} / ${formatTime(duration)}`;
+		this.#timer.textContent = this.#labels.timer(formatTime(currentTime), formatTime(duration));
 	}
 	updateSkip(available, countdown) {
 		this.#skip.dataset.skipAvailable = String(available);
-		this.#skip.textContent = available ? "광고 건너뛰기 ▶" : `${countdown}초 후 건너뛰기`;
+		this.#skip.textContent = available ? this.#labels.skip : this.#labels.skipCountdown(countdown);
 	}
 	onSkip(callback) {
 		this.#onSkip = callback;

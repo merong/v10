@@ -74,6 +74,33 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+/**
+ * Text the overlay renders. The countdown and timer are functions because the
+ * number does not sit in the same place in every language.
+ */
+export interface AdsOverlayLabels {
+  /** Skip button once skipping is allowed. */
+  skip: string;
+  /** Skip button before `skipAfter` elapses, given whole seconds remaining. */
+  skipCountdown: (seconds: number) => string;
+  /** Elapsed and total readout, both already formatted as `m:ss`. */
+  timer: (elapsed: string, duration: string) => string;
+  /** Alternative text on an image ad. */
+  mediaAlt: string;
+}
+
+export interface AdsOverlayOptions {
+  /** Overrides for the text above. Anything left out keeps its default. */
+  labels?: Partial<AdsOverlayLabels>;
+}
+
+const DEFAULT_LABELS: AdsOverlayLabels = {
+  skip: 'Skip ad',
+  skipCountdown: (seconds) => `Skip in ${seconds}s`,
+  timer: (elapsed, duration) => `AD ${elapsed} / ${duration}`,
+  mediaAlt: 'Advertisement',
+};
+
 export class AdsOverlay {
   #root: HTMLElement;
   #timer: HTMLElement;
@@ -82,9 +109,12 @@ export class AdsOverlay {
   #adMedia: HTMLVideoElement | HTMLImageElement | null = null;
   #onSkip: (() => void) | null = null;
   #destroyed = false;
+  #labels: AdsOverlayLabels;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, options: AdsOverlayOptions = {}) {
     injectStyles();
+
+    this.#labels = { ...DEFAULT_LABELS, ...options.labels };
 
     this.#root = document.createElement('div');
     this.#root.className = 'vjs-ads-overlay';
@@ -96,13 +126,13 @@ export class AdsOverlay {
 
     this.#timer = document.createElement('div');
     this.#timer.className = 'vjs-ads-timer';
-    this.#timer.textContent = 'AD 0:00';
+    this.#timer.textContent = this.#labels.timer(formatTime(0), formatTime(0));
 
     this.#skip = document.createElement('button');
     this.#skip.className = 'vjs-ads-skip';
     this.#skip.type = 'button';
     this.#skip.dataset.skipAvailable = 'false';
-    this.#skip.textContent = '광고 건너뛰기';
+    this.#skip.textContent = this.#labels.skip;
     this.#skip.addEventListener('click', () => {
       if (this.#skip.dataset.skipAvailable === 'true' && this.#onSkip) {
         this.#onSkip();
@@ -132,7 +162,7 @@ export class AdsOverlay {
       const img = document.createElement('img');
       img.className = 'vjs-ads-media';
       img.src = ad.src;
-      img.alt = 'Advertisement';
+      img.alt = this.#labels.mediaAlt;
       if (onClick) img.addEventListener('click', onClick);
       this.#mediaContainer.appendChild(img);
       this.#adMedia = img;
@@ -142,12 +172,12 @@ export class AdsOverlay {
   }
 
   updateTimer(currentTime: number, duration: number): void {
-    this.#timer.textContent = `AD ${formatTime(currentTime)} / ${formatTime(duration)}`;
+    this.#timer.textContent = this.#labels.timer(formatTime(currentTime), formatTime(duration));
   }
 
   updateSkip(available: boolean, countdown: number): void {
     this.#skip.dataset.skipAvailable = String(available);
-    this.#skip.textContent = available ? '광고 건너뛰기 ▶' : `${countdown}초 후 건너뛰기`;
+    this.#skip.textContent = available ? this.#labels.skip : this.#labels.skipCountdown(countdown);
   }
 
   onSkip(callback: () => void): void {
