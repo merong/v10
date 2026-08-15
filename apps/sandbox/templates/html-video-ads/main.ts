@@ -16,6 +16,28 @@ const loadLatest = createLatestLoader();
 
 let overlay: AdsOverlay | null = null;
 
+type GuideStep = 'loading' | 'ready' | 'playing' | 'skippable' | 'done';
+
+/** Highlights the guide step the demo is currently on. Hidden when embedded in the shell preview. */
+function setStep(step: GuideStep | null): void {
+  for (const el of document.querySelectorAll<HTMLElement>('#guide [data-step]')) {
+    if (el.dataset.step === step) el.setAttribute('aria-current', 'step');
+    else el.removeAttribute('aria-current');
+  }
+}
+
+function showAdDetails(ad: Ad | null): void {
+  const set = (id: string, value: string) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+
+  set('ad-id', ad?.id ?? '—');
+  set('ad-type', ad?.type ?? '—');
+  set('ad-duration', ad ? `${ad.duration}s` : '—');
+  set('ad-skip-after', ad ? `${ad.skipAfter}s` : '—');
+}
+
 async function render() {
   const tag = await loadLatest(() => loadVideoSkinTag(state.skin, state.styling));
   if (!tag) return;
@@ -46,18 +68,27 @@ async function render() {
 }
 
 function setupPrerollAd(adsOverlay: AdsOverlay): void {
+  setStep('loading');
+  showAdDetails(null);
+
   fetch('/mock/ads.json')
     .then((res) => res.json())
     .then((data: { ads?: Ad[] }) => {
       const ads = data.ads;
-      if (!ads || ads.length === 0) return;
+      if (!ads || ads.length === 0) {
+        setStep(null);
+        return;
+      }
 
       // Pick a random ad
       const ad = ads[Math.floor(Math.random() * ads.length)]!;
+      setStep('ready');
+      showAdDetails(ad);
       attachPreroll(adsOverlay, ad);
     })
     .catch(() => {
       // Ad loading failed — content plays normally
+      setStep(null);
     });
 }
 
@@ -78,12 +109,15 @@ function attachPreroll(adsOverlay: AdsOverlay, ad: Ad): void {
       if (ad.clickUrl) window.open(ad.clickUrl, '_blank');
     });
 
+    setStep('playing');
+
     adsOverlay.onSkip(() => {
       finishAd();
     });
 
     const startTime = performance.now();
     let rafId = 0;
+    let skipUnlocked = false;
 
     function tick(): void {
       const elapsed = (performance.now() - startTime) / 1000;
@@ -92,6 +126,11 @@ function attachPreroll(adsOverlay: AdsOverlay, ad: Ad): void {
       const canSkip = ad.skipAfter > 0 && elapsed >= ad.skipAfter;
       const countdown = Math.max(0, Math.ceil(ad.skipAfter - elapsed));
       adsOverlay.updateSkip(canSkip, countdown);
+
+      if (canSkip && !skipUnlocked) {
+        skipUnlocked = true;
+        setStep('skippable');
+      }
 
       if (elapsed >= ad.duration) {
         finishAd();
@@ -104,6 +143,7 @@ function attachPreroll(adsOverlay: AdsOverlay, ad: Ad): void {
     function finishAd(): void {
       cancelAnimationFrame(rafId);
       adsOverlay.hide();
+      setStep('done');
       video!.play().catch(() => {});
     }
 
