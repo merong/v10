@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Configure and control the player</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <h1>Configure and control the player</h1>
+    <p class="lede">
+      What you can set on a Video.js 10 player from plain HTML, and what you can call on it from a script.
+    </p>
+
+    <nav class="toc">
+      On this page
+      <ol>
+        <li><a href="#halves">Two halves</a></li>
+        <li><a href="#configure">What you configure</a></li>
+        <li><a href="#store">Getting the store</a></li>
+        <li><a href="#using">Reading, calling, subscribing</a></li>
+        <li><a href="#surface">The full surface</a></li>
+        <li><a href="#gotchas">Gotchas</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="halves">Two halves</h2>
+
+    <p>
+      There is no init call and no options object. The player is a set of custom elements, so loading the script
+      registers them and the markup does the rest. Configuration and control are separate:
+    </p>
+
+    <ul>
+      <li><strong>Configuration is markup.</strong> Attributes and slots, set before or while the player runs.</li>
+      <li>
+        <strong>Control is script.</strong> Every player element exposes a <code>store</code> holding current state and
+        the actions that change it.
+      </li>
+    </ul>
+
+    <p>
+      A page that only needs a player to appear never touches the second half. See
+      <a href="../ads/">the ad examples</a> for three ways to load the script itself.
+    </p>
+
+    <h2 id="configure">What you configure</h2>
+
+    <p>Configuration lives in four places, and which one you use depends on what you are setting.</p>
+
+    <h3>The media element</h3>
+
+    <p>
+      Playback options are the standard HTML media attributes, on the <code>&lt;video&gt;</code> or
+      <code>&lt;audio&gt;</code> element (or a media element like <code>&lt;hlsjs-video&gt;</code>). Nothing here is
+      Video.js-specific.
+    </p>
+
+    <pre><code>&lt;video-player&gt;
+  &lt;video-skin&gt;
+    &lt;video
+      src="/video.mp4"
+      poster="/poster.jpg"
+      preload="metadata"
+      crossorigin="anonymous"
+      playsinline
+      muted
+      loop
+    &gt;&lt;/video&gt;
+  &lt;/video-skin&gt;
+&lt;/video-player&gt;</code></pre>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Attribute</th>
+          <th>Effect</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>src</code></td><td>What to play.</td></tr>
+        <tr><td><code>autoplay</code></td><td>Start without a gesture. Browsers only allow it when also muted.</td></tr>
+        <tr><td><code>muted</code></td><td>Start silent.</td></tr>
+        <tr><td><code>loop</code></td><td>Restart on end.</td></tr>
+        <tr><td><code>playsinline</code></td><td>Play in place on iOS instead of going fullscreen.</td></tr>
+        <tr><td><code>preload</code></td><td><code>none</code>, <code>metadata</code>, or <code>auto</code>.</td></tr>
+        <tr><td><code>crossorigin</code></td><td>Needed for text tracks and thumbnails from another origin.</td></tr>
+        <tr><td><code>poster</code></td><td>Still shown before playback.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>The player element</h3>
+
+    <p>
+      <code>&lt;video-player&gt;</code> takes configuration that belongs to the player rather than to the media. Each
+      player feature can declare configuration keys, which become kebab-cased attributes. In the standard video preset
+      that is metadata:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Attribute</th>
+          <th>Reads back as</th>
+          <th>Effect</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>content-title</code></td>
+          <td><code>store.contentTitle</code></td>
+          <td>Title shown by the UI. Wins over a title the media itself reports.</td>
+        </tr>
+        <tr>
+          <td><code>default-content-title</code></td>
+          <td><code>store.contentTitle</code></td>
+          <td>Fallback used only when neither of the other two is set.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <pre><code>&lt;video-player content-title="Big Buck Bunny"&gt;</code></pre>
+
+    <p class="note">
+      These are live. Setting the attribute later — <code>player.setAttribute('content-title', 'Episode 2')</code> —
+      flows through to <code>store.contentTitle</code>.
+    </p>
+
+    <h3>Slots and child elements</h3>
+
+    <p>Some things are elements rather than attributes:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Markup</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>&lt;img slot="poster"&gt;</code></td>
+          <td>Poster you want the skin to render and manage, rather than the browser's own.</td>
+        </tr>
+        <tr>
+          <td><code>&lt;track kind="chapters"&gt;</code></td>
+          <td>Chapter markers on the time slider.</td>
+        </tr>
+        <tr>
+          <td><code>&lt;track kind="metadata"&gt;</code></td>
+          <td>Storyboard thumbnails shown while scrubbing.</td>
+        </tr>
+        <tr>
+          <td><code>&lt;media-i18n&gt;</code></td>
+          <td>Wraps the player to translate control labels. Not needed for English.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>The bundle you load</h3>
+
+    <p>
+      The largest configuration decision is made before any markup: which script you load. It fixes the skin and which
+      features the store has. <code>video.js</code> and <code>video-minimal.js</code> give different skins;
+      <code>video-headless.js</code> gives none. An audio bundle builds a store without fullscreen or picture-in-picture
+      because an audio player has no use for them.
+    </p>
+
+    <h2 id="store">Getting the store</h2>
+
+    <p>Every player element exposes its store as a property:</p>
+
+    <pre><code>const player = document.querySelector('video-player');
+const store = player.store;</code></pre>
+
+    <p>
+      It is ready as soon as your script runs, provided the player script ran first. In a module script that is
+      automatic, since modules are deferred and execute in order.
+    </p>
+
+    <p class="note">
+      <strong>State is not.</strong> <code>store.target</code> is populated immediately, but anything the media reports
+      — <code>duration</code>, <code>canPlay</code>, track lists — stays empty until metadata loads. Reading
+      <code>duration</code> in the same tick gives <code>0</code>. Subscribe instead of reading once.
+    </p>
+
+    <h2 id="using">Reading, calling, subscribing</h2>
+
+    <p>State and actions sit directly on the store. There is no <code>getState()</code> and no dispatch.</p>
+
+    <pre><code>store.paused;        // true
+store.currentTime;   // 0
+store.duration;      // 25.32 once metadata has loaded
+
+store.play();
+store.seek(30);
+store.setVolume(0.5);
+store.toggleFullscreen();</code></pre>
+
+    <p><code>subscribe</code> tells you something changed and returns a function that stops it:</p>
+
+    <pre><code>const stop = store.subscribe(() =&gt; {
+  progress.value = store.currentTime / store.duration;
+});
+
+// later
+stop();</code></pre>
+
+    <p class="note">
+      The callback takes <strong>no arguments</strong>. It is a notification, not a payload — read the values you care
+      about off the store inside it.
+    </p>
+
+    <h2 id="surface">The full surface</h2>
+
+    <p>
+      What follows is the store of a standard video player. An audio or background player has fewer groups. Rather than
+      trusting this table, you can always print the real one:
+    </p>
+
+    <pre><code>const store = document.querySelector('video-player').store;
+console.log(Object.keys(store));</code></pre>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Group</th>
+          <th>State</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Playback</td>
+          <td><code>paused</code>, <code>ended</code>, <code>started</code>, <code>waiting</code></td>
+          <td><code>play()</code>, <code>pause()</code>, <code>togglePaused()</code></td>
+        </tr>
+        <tr>
+          <td>Time</td>
+          <td><code>currentTime</code>, <code>duration</code>, <code>seeking</code></td>
+          <td><code>seek(time)</code></td>
+        </tr>
+        <tr>
+          <td>Volume</td>
+          <td>
+            <code>volume</code>, <code>muted</code>, <code>volumeAvailability</code>, <code>mutedAvailability</code>
+          </td>
+          <td><code>setVolume(level)</code>, <code>toggleMuted()</code></td>
+        </tr>
+        <tr>
+          <td>Playback rate</td>
+          <td><code>playbackRate</code>, <code>playbackRates</code></td>
+          <td><code>setPlaybackRate(rate)</code></td>
+        </tr>
+        <tr>
+          <td>Source</td>
+          <td><code>source</code>, <code>canPlay</code></td>
+          <td><code>loadSource(source)</code></td>
+        </tr>
+        <tr>
+          <td>Buffer</td>
+          <td><code>buffered</code>, <code>seekable</code></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Quality</td>
+          <td><code>videoRenditionList</code>, <code>activeVideoRendition</code></td>
+          <td><code>selectVideoRendition(rendition)</code></td>
+        </tr>
+        <tr>
+          <td>Audio tracks</td>
+          <td><code>audioTrackList</code></td>
+          <td><code>selectAudioTrack(track)</code></td>
+        </tr>
+        <tr>
+          <td>Text tracks</td>
+          <td>
+            <code>textTrackList</code>, <code>subtitlesShowing</code>, <code>chaptersCues</code>,
+            <code>thumbnailCues</code>, <code>thumbnailTrackSrc</code>
+          </td>
+          <td><code>toggleSubtitles(on)</code>, <code>selectSubtitlesTrack(track)</code></td>
+        </tr>
+        <tr>
+          <td>Fullscreen</td>
+          <td><code>fullscreen</code>, <code>fullscreenAvailability</code></td>
+          <td>
+            <code>requestFullscreen()</code>, <code>exitFullscreen()</code>, <code>toggleFullscreen()</code>
+          </td>
+        </tr>
+        <tr>
+          <td>Picture-in-picture</td>
+          <td><code>pip</code>, <code>pipAvailability</code></td>
+          <td>
+            <code>requestPictureInPicture()</code>, <code>exitPictureInPicture()</code>,
+            <code>togglePictureInPicture()</code>
+          </td>
+        </tr>
+        <tr>
+          <td>Remote playback</td>
+          <td><code>remotePlaybackState</code>, <code>remotePlaybackAvailability</code></td>
+          <td><code>toggleRemotePlayback()</code></td>
+        </tr>
+        <tr>
+          <td>Controls</td>
+          <td><code>userActive</code>, <code>controlsVisible</code></td>
+          <td><code>requestControlsLock()</code>, <code>toggleControls()</code></td>
+        </tr>
+        <tr>
+          <td>Error</td>
+          <td><code>error</code></td>
+          <td><code>dismissError()</code></td>
+        </tr>
+        <tr>
+          <td>Metadata</td>
+          <td><code>contentTitle</code></td>
+          <td><code>setContentTitle(title)</code>, <code>setDefaultContentTitle(title)</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      Alongside those the store carries its own lifecycle: <code>target</code> (the media and container it is attached
+      to), <code>destroyed</code>, <code>subscribe()</code>, <code>attach()</code>, and <code>destroy()</code>. The
+      player element manages attach and destroy for you; you rarely call them yourself.
+    </p>
+
+    <p>
+      An <code>*Availability</code> value tells you whether the browser offers that capability at all — check it before
+      showing a control for it.
+    </p>
+
+    <h2 id="gotchas">Gotchas</h2>
+
+    <h3>Writes land on the next microtask</h3>
+
+    <p>Reading straight back gives you the old value:</p>
+
+    <pre><code>store.setVolume(0.5);
+store.volume;                       // still 1
+
+queueMicrotask(() =&gt; store.volume); // 0.5</code></pre>
+
+    <p>
+      Several actions in one tick collapse into a single <code>subscribe</code> callback, which is what you want for
+      rendering — but it means you cannot treat an action as synchronous.
+    </p>
+
+    <h3>Media state starts empty</h3>
+
+    <p>
+      <code>duration</code> is <code>0</code> and <code>canPlay</code> is <code>false</code> until the browser has the
+      metadata. Track lists are empty for the same reason. Anything reading these should go through
+      <code>subscribe</code>.
+    </p>
+
+    <h3>The skin needs a size</h3>
+
+    <p>
+      <code>&lt;video-skin&gt;</code> fills its container, and a container with no height collapses to nothing. Give it
+      one:
+    </p>
+
+    <pre><code>video-skin {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}</code></pre>
+
+    <footer>
+      <p>
+        The tables above were read off a running player rather than transcribed, so they describe the build in this
+        repository. Print <code>Object.keys(store)</code> to check yours.
+      </p>
+      <p><a href="../ads/">Ad examples</a> · <a href="https://videojs.com/">videojs.com</a></p>
+    </footer>
+  </body>
+</html>
