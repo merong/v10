@@ -42,4 +42,34 @@ for (const { src, name } of entries) {
   }
 }
 
+// Classic-script build of the integrated bundle, for pages that cannot set
+// `type="module"`. It carries the same exports on a `VideojsAds` global.
+// Only the production mode is built — a page reaching for a global is shipping,
+// not debugging.
+configs.push({
+  entry: { 'video-ads': 'src/cdn/video-ads.ts' },
+  platform: 'browser',
+  format: 'iife',
+  target: 'es2022',
+  // No map for the same reason only prod is built: this output is for shipping.
+  // The dev ESM bundles are where debugging happens.
+  sourcemap: false,
+  clean: false,
+  dts: false,
+  minify: true,
+  noExternal: [/.*/],
+  outDir: 'cdn',
+  // tsdown appends `.iife.js` for this format, so the entry name stays bare.
+  outputOptions: { name: 'VideojsAds' },
+  define: {
+    __DEV__: 'false',
+  },
+  inputOptions: {
+    onwarn(warning, defaultHandler) {
+      if (warning.code === 'COMMONJS_VARIABLE_IN_ESM') return;
+      defaultHandler(warning);
+    },
+  },
+});
+
 export default defineConfig(configs);
