@@ -1,0 +1,13 @@
+{
+  "ads": [
+    {
+      "id": "example-preroll",
+      "type": "video",
+      "src": "./media/sample-ad.mp4",
+      "mime": "video/mp4",
+      "duration": 10,
+      "skipAfter": 3,
+      "clickUrl": "https://videojs.com"
+    }
+  ]
+}
