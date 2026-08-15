@@ -20,14 +20,14 @@ export const VIDEO_PAGES = [
     name: 'HTML Video HLS',
     path: '/pages/html-video-hls.html',
     framework: 'html',
-    media: 'hls-video',
+    media: 'hlsjs-video',
     resource: 'hlsTs',
   },
   {
-    name: 'HTML Simple HLS Video fMP4',
-    path: '/pages/html-simple-hls-video-fmp4.html',
+    name: 'HTML HLS Video fMP4',
+    path: '/pages/html-hls-video-fmp4.html',
     framework: 'html',
-    media: 'simple-hls-video',
+    media: 'hls-video',
     resource: 'hlsFmp4',
   },
   {
@@ -63,7 +63,7 @@ export const VIDEO_PAGES = [
     name: 'React Video HLS',
     path: '/pages/react-video-hls.html',
     framework: 'react',
-    media: 'hls-video',
+    media: 'hlsjs-video',
     resource: 'hlsTs',
   },
 ] as const satisfies readonly PageEntry[];
@@ -129,7 +129,7 @@ export const CDN_VIDEO_PAGES = [
     name: 'CDN Video HLS',
     path: '/pages/cdn-video-hls.html',
     framework: 'html',
-    media: 'hls-video',
+    media: 'hlsjs-video',
     resource: 'hlsTs',
   },
 ] as const satisfies readonly PageEntry[];

@@ -1,24 +1,21 @@
-import { createPlayer, PlayButton, Poster } from '@videojs/react';
+import { Container, createPlayer, PlayButton, Poster } from '@videojs/react';
 import { Video, videoFeatures } from '@videojs/react/video';
 
-const Player = createPlayer({ features: videoFeatures });
+const { Player } = createPlayer({ features: videoFeatures });
 
 export default function BasicUsage() {
   return (
-    <Player.Provider>
-      <Player.Container className="media-container">
-        <Video src="https://stream.mux.com/BV3YZtogl89mg9VcNBhhnHm02Y34zI1nlMuMQfAbl3dM/highest.mp4" playsInline />
+    <Player>
+      <Container className="media-container">
+        <Video src="{{VJS10_DEMO_VIDEO_MP4}}" playsInline />
 
-        <Poster
-          className="media-poster"
-          src="https://image.mux.com/BV3YZtogl89mg9VcNBhhnHm02Y34zI1nlMuMQfAbl3dM/thumbnail.jpg"
-        />
+        <Poster className="media-poster" src="{{VJS10_DEMO_POSTER}}" />
 
         <PlayButton
           className="media-play-button"
           render={(props, state) => <button {...props}>{state.paused ? 'Play' : 'Pause'}</button>}
         />
-      </Player.Container>
-    </Player.Provider>
+      </Container>
+    </Player>
   );
 }

@@ -1,8 +1,7 @@
+import type { MediaSourceState } from '@videojs/media';
+import { isMediaSourceCapable } from '@videojs/media';
 import { listen } from '@videojs/utils/dom';
-
-import type { MediaSourceState } from '../../../core/media/state';
 import { definePlayerFeature } from '../../feature';
-import { isMediaSourceCapable } from '../../media/predicate';
 
 export const sourceFeature = definePlayerFeature({
   name: 'source',

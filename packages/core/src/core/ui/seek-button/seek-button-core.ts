@@ -1,16 +1,17 @@
+import type { MediaTimeState } from '@videojs/media';
 import { createState } from '@videojs/store';
 import { defaults } from '@videojs/utils/object';
-import { isFunction } from '@videojs/utils/predicate';
 import type { NonNullableObject } from '@videojs/utils/types';
-
-import type { MediaTimeState } from '../../media/state';
+import { resolveText, type Text } from '../../i18n';
+import { backwardText, forwardText } from '../../i18n/text/seek';
 import type { ButtonState } from '../types';
+import { resolveLabel } from '../utils/resolve-label';
 
 export interface SeekButtonProps {
   /** Seconds to seek. Positive = forward, negative = backward. Default `30`. */
   seconds?: number | undefined;
   /** Custom label for the button. */
-  label?: string | ((state: SeekButtonState) => string) | undefined;
+  label?: Text | string | ((state: SeekButtonState) => Text | string) | undefined;
   /** Whether the button is disabled. */
   disabled?: boolean | undefined;
 }
@@ -48,18 +49,16 @@ export class SeekButtonCore {
     this.#props = defaults(props, SeekButtonCore.defaultProps);
   }
 
-  getLabel(state: SeekButtonState): string {
-    const { label } = this.#props;
+  getLabel(state: SeekButtonState): Text | string {
+    const custom = resolveLabel(this.#props.label, state);
+    if (custom !== undefined) return custom;
 
-    if (isFunction(label)) {
-      const customLabel = label(state);
-      if (customLabel) return customLabel;
-    } else if (label) {
-      return label;
-    }
+    return state.direction === 'backward' ? backwardText : forwardText;
+  }
 
-    const abs = Math.abs(this.#props.seconds);
-    return state.direction === 'backward' ? `Seek backward ${abs} seconds` : `Seek forward ${abs} seconds`;
+  getLabelParams(state: SeekButtonState): { seconds: number } | undefined {
+    if (resolveLabel(this.#props.label, state) !== undefined) return undefined;
+    return { seconds: Math.abs(this.#props.seconds) };
   }
 
   getAttrs(state: SeekButtonState) {
@@ -78,7 +77,7 @@ export class SeekButtonCore {
     const direction: SeekButtonDirection = this.#props.seconds < 0 ? 'backward' : 'forward';
 
     this.state.patch({ seeking: media.seeking, direction });
-    this.state.patch({ label: this.getLabel(this.state.current) });
+    this.state.patch({ label: resolveText(this.getLabel(this.state.current)) });
 
     return this.state.current;
   }

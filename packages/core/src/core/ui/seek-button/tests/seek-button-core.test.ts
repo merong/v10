@@ -1,6 +1,5 @@
+import type { MediaTimeState } from '@videojs/media';
 import { describe, expect, it, vi } from 'vitest';
-
-import type { MediaTimeState } from '../../../media/state';
 import type { SeekButtonState } from '../seek-button-core';
 import { SeekButtonCore } from '../seek-button-core';
 
@@ -75,19 +74,24 @@ describe('SeekButtonCore', () => {
   describe('getLabel', () => {
     it('returns forward label for forward direction', () => {
       const core = new SeekButtonCore({ seconds: 30 });
-      expect(core.getLabel(createState({ direction: 'forward' }))).toBe('Seek forward 30 seconds');
+      expect(core.getLabel(createState({ direction: 'forward' }))).toMatchObject({
+        key: 'seek.forward',
+        text: 'Seek forward {seconds} seconds',
+      });
     });
 
     it('returns backward label for backward direction', () => {
       const core = new SeekButtonCore({ seconds: -10 });
-      expect(core.getLabel(createState({ direction: 'backward' }))).toBe('Seek backward 10 seconds');
+      expect(core.getLabel(createState({ direction: 'backward' }))).toMatchObject({
+        key: 'seek.backward',
+        text: 'Seek backward {seconds} seconds',
+      });
     });
 
     it('uses absolute value in backward label', () => {
       const core = new SeekButtonCore({ seconds: -30 });
       const label = core.getLabel(createState({ direction: 'backward' }));
-      expect(label).toBe('Seek backward 30 seconds');
-      expect(label).not.toContain('-');
+      expect(label).toMatchObject({ key: 'seek.backward', text: 'Seek backward {seconds} seconds' });
     });
 
     it('returns custom string label', () => {
@@ -105,7 +109,38 @@ describe('SeekButtonCore', () => {
 
     it('falls back to default when function returns empty', () => {
       const core = new SeekButtonCore({ seconds: 10, label: () => '' });
-      expect(core.getLabel(createState({ direction: 'forward' }))).toBe('Seek forward 10 seconds');
+      expect(core.getLabel(createState({ direction: 'forward' }))).toMatchObject({
+        key: 'seek.forward',
+        text: 'Seek forward {seconds} seconds',
+      });
+    });
+  });
+
+  describe('getLabelParams', () => {
+    it('returns seconds for default forward label', () => {
+      const core = new SeekButtonCore({ seconds: 30 });
+      expect(core.getLabelParams(createState({ direction: 'forward' }))).toEqual({ seconds: 30 });
+    });
+
+    it('returns positive seconds for backward seek', () => {
+      const core = new SeekButtonCore({ seconds: -10 });
+      expect(core.getLabelParams(createState({ direction: 'backward' }))).toEqual({ seconds: 10 });
+    });
+
+    it('returns undefined when custom label is set', () => {
+      const core = new SeekButtonCore({ label: 'Skip' });
+      expect(core.getLabelParams(createState())).toBeUndefined();
+    });
+
+    it('returns undefined when custom label function is set', () => {
+      const core = new SeekButtonCore({
+        seconds: 30,
+        label: () => 'custom',
+      });
+      const state = createState({ direction: 'forward' });
+
+      expect(core.getLabel(state)).toBe('custom');
+      expect(core.getLabelParams(state)).toBeUndefined();
     });
   });
 
@@ -113,7 +148,7 @@ describe('SeekButtonCore', () => {
     it('returns aria-label', () => {
       const core = new SeekButtonCore({ seconds: 30 });
       const attrs = core.getAttrs(createState({ direction: 'forward' }));
-      expect(attrs['aria-label']).toBe('Seek forward 30 seconds');
+      expect(attrs['aria-label']).toMatchObject({ key: 'seek.forward', text: 'Seek forward {seconds} seconds' });
     });
 
     it('sets aria-disabled when disabled', () => {
@@ -129,7 +164,7 @@ describe('SeekButtonCore', () => {
     });
   });
 
-  describe('seek', () => {
+  describe('Seek', () => {
     it('seeks forward by seconds offset', async () => {
       const core = new SeekButtonCore({ seconds: 30 });
       const media = createMediaState({ currentTime: 60 });

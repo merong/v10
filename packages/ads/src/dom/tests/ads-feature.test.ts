@@ -26,6 +26,7 @@ describe('adsFeature', () => {
     const state = adsFeature.state({
       target: () => ({ media: document.createElement('video'), container: null }),
       signals: createMockSignals(),
+      get: () => ({}),
       set: vi.fn(),
     });
 
@@ -44,6 +45,7 @@ describe('adsFeature', () => {
     const state = adsFeature.state({
       target: () => ({ media: document.createElement('video'), container: null }),
       signals: createMockSignals(),
+      get: () => ({}),
       set: (partial: Record<string, unknown>) => {
         setCalls.push(partial);
       },
@@ -65,6 +67,7 @@ describe('adsFeature', () => {
     const state = adsFeature.state({
       target: () => ({ media: document.createElement('video'), container: null }),
       signals: createMockSignals(),
+      get: () => ({}),
       set: (partial: Record<string, unknown>) => {
         setCalls.push(partial);
       },
@@ -87,6 +90,7 @@ describe('adsFeature', () => {
     const state = adsFeature.state({
       target: () => ({ media: document.createElement('video'), container: null }),
       signals: createMockSignals(),
+      get: () => ({}),
       set: (partial: Record<string, unknown>) => {
         setCalls.push(partial);
       },

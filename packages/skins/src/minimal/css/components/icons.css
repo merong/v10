@@ -1,10 +1,7 @@
-/* ==========================================================================
-   Icons
-   ========================================================================== */
-
 .media-minimal-skin .media-icon__container {
   position: relative;
 }
+
 .media-minimal-skin .media-icon {
   flex-shrink: 0;
   width: var(--media-icon-size);

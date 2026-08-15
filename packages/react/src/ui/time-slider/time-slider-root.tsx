@@ -1,10 +1,12 @@
 'use client';
 
 import { TimeSliderCore, TimeSliderDataAttrs } from '@videojs/core';
-import { getTimeSliderCSSVars, logMissingFeature, selectBuffer, selectTime } from '@videojs/core/dom';
+import { getTimeSliderCSSVars, logMissingFeature, selectBuffer, selectPlayback, selectTime } from '@videojs/core/dom';
+import { translateText } from '@videojs/core/i18n';
 import { formatTime } from '@videojs/utils/time';
-import { forwardRef, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 
+import { useLocale, useTranslator } from '../../i18n/context';
 import { usePlayer } from '../../player/context';
 import type { UIComponentProps } from '../../utils/types';
 import { useLatestRef } from '../../utils/use-latest-ref';
@@ -34,17 +36,38 @@ export const TimeSliderRoot = forwardRef<HTMLDivElement, TimeSliderRootProps>(
       thumbAlignment,
       onDragStart,
       onDragEnd,
+      pauseOnDrag,
       ...elementProps
     } = componentProps;
 
     const time = usePlayer(selectTime);
     const buffer = usePlayer(selectBuffer);
+    const playback = usePlayer(selectPlayback);
+    const translator = useTranslator();
+    const locale = useLocale();
 
     const [core] = useState(() => new TimeSliderCore());
-    core.setProps({ label, step, largeStep, orientation, disabled, thumbAlignment });
+    core.setProps({
+      label,
+      step,
+      largeStep,
+      orientation,
+      disabled,
+      thumbAlignment,
+      pauseOnDrag,
+      changeThrottle,
+    });
+    core.setFormatLocale(locale);
 
     // Keep a ref to the latest media state for callbacks that fire outside the render cycle.
     const mediaRef = useLatestRef(time && buffer ? { ...time, ...buffer } : null);
+    const playbackRef = useLatestRef(playback);
+
+    // Resume playback if the slider unmounts mid-drag — createSlider's destroy()
+    // does not fire onDragEnd, so without this the player would stay paused.
+    useEffect(() => {
+      return () => core.endDrag(playbackRef.current);
+    }, [core]);
 
     const duration = time?.duration ?? 0;
 
@@ -66,7 +89,7 @@ export const TimeSliderRoot = forwardRef<HTMLDivElement, TimeSliderRootProps>(
 
         return core.getState();
       },
-      getPercent: () => (duration > 0 ? ((time?.currentTime ?? 0) / duration) * 100 : 0),
+      getPercent: () => core.percentFromValue(time?.currentTime ?? 0),
       getStepPercent: () => core.getStepPercent(),
       getLargeStepPercent: () => core.getLargeStepPercent(),
       orientation,
@@ -79,8 +102,14 @@ export const TimeSliderRoot = forwardRef<HTMLDivElement, TimeSliderRootProps>(
         const media = mediaRef.current;
         if (media) media.seek(core.rawValueFromPercent(percent));
       },
-      onDragStart,
-      onDragEnd,
+      onDragStart: () => {
+        core.startDrag(playbackRef.current);
+        onDragStart?.();
+      },
+      onDragEnd: () => {
+        core.endDrag(playbackRef.current);
+        onDragEnd?.();
+      },
     });
 
     if (!time) {
@@ -92,12 +121,23 @@ export const TimeSliderRoot = forwardRef<HTMLDivElement, TimeSliderRootProps>(
       <SliderProvider
         value={{
           state,
-          pointerValue: core.valueFromPercent(state.pointerPercent),
+          pointerValue: core.rawValueFromPercent(state.pointerPercent),
           thumbRef,
           thumbProps,
           stateAttrMap: TimeSliderDataAttrs,
-          getAttrs: (sliderState) => core.getAttrs(sliderState as TimeSliderCore.State),
-          formatValue: (value) => formatTime(value, duration),
+          getAttrs: (sliderState) => {
+            const attrs = core.getAttrs(sliderState as TimeSliderCore.State);
+            return {
+              ...attrs,
+              'aria-label': translateText(attrs['aria-label'], translator),
+              'aria-valuetext': translateText(
+                attrs['aria-valuetext'],
+                translator,
+                core.getValueTextParams(sliderState as TimeSliderCore.State)
+              ),
+            };
+          },
+          formatValue: (value) => formatTime(value, duration, { locale }),
         }}
       >
         {renderElement(

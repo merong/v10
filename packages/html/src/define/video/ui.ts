@@ -1,9 +1,14 @@
 // Registers the video player, container, and all video UI custom elements
 // without creating a skin element. Use this entry when building an ejected
 // (light DOM) player layout.
+
+import { I18nProviderElement } from '../../i18n/provider-element';
 import { MediaContainerElement } from '../../media/container-element';
+import { AirPlayButtonElement } from '../../ui/airplay-button/airplay-button-element';
+import { AudioTrackRadioGroupElement } from '../../ui/audio-track-radio-group/audio-track-radio-group-element';
 import { BufferingIndicatorElement } from '../../ui/buffering-indicator/buffering-indicator-element';
 import { CaptionsButtonElement } from '../../ui/captions-button/captions-button-element';
+import { CaptionsRadioGroupElement } from '../../ui/captions-radio-group/captions-radio-group-element';
 import { CastButtonElement } from '../../ui/cast-button/cast-button-element';
 import { FullscreenButtonElement } from '../../ui/fullscreen-button/fullscreen-button-element';
 import { GestureElement } from '../../ui/gesture/gesture-element';
@@ -13,23 +18,23 @@ import { MuteButtonElement } from '../../ui/mute-button/mute-button-element';
 import { PiPButtonElement } from '../../ui/pip-button/pip-button-element';
 import { PlayButtonElement } from '../../ui/play-button/play-button-element';
 import { PlaybackRateButtonElement } from '../../ui/playback-rate-button/playback-rate-button-element';
-import { PlaybackRateMenuElement } from '../../ui/playback-rate-menu/playback-rate-menu-element';
-import { PlaybackRateMenuTriggerElement } from '../../ui/playback-rate-menu/playback-rate-menu-trigger-element';
-import { PlaybackRateOptionsElement } from '../../ui/playback-rate-menu/playback-rate-options-element';
+import { PlaybackRateRadioGroupElement } from '../../ui/playback-rate-radio-group/playback-rate-radio-group-element';
 import { PopoverElement } from '../../ui/popover/popover-element';
 import { PosterElement } from '../../ui/poster/poster-element';
+import { QualityRadioGroupElement } from '../../ui/quality-radio-group/quality-radio-group-element';
 import { SeekButtonElement } from '../../ui/seek-button/seek-button-element';
-import { TooltipElement } from '../../ui/tooltip/tooltip-element';
-import { TooltipGroupElement } from '../../ui/tooltip/tooltip-group-element';
+import { TextElement } from '../../ui/text/text-element';
+import { TimeSliderChapterTitleElement } from '../../ui/time-slider/time-slider-chapters/time-slider-chapter-title-element';
+import { TimeSliderChaptersElement } from '../../ui/time-slider/time-slider-chapters/time-slider-chapters-element';
 import { safeDefine } from '../safe-define';
 import {
   defineControls,
   defineErrorDialog,
   defineInputIndicators,
   defineMenu,
+  defineSliders,
   defineTime,
-  defineTimeSlider,
-  defineVolumeSlider,
+  defineTooltip,
 } from '../ui/compounds';
 
 // Value import — player.ts body runs before this module's body.
@@ -39,17 +44,22 @@ import { VideoPlayerElement } from './player';
 
 safeDefine(VideoPlayerElement);
 safeDefine(MediaContainerElement);
+safeDefine(I18nProviderElement);
 
 // Compound groups.
 defineControls();
 defineErrorDialog();
 defineInputIndicators();
-defineTimeSlider();
-defineVolumeSlider();
+defineSliders();
+safeDefine(TimeSliderChaptersElement);
+safeDefine(TimeSliderChapterTitleElement);
 defineTime();
 defineMenu();
+defineTooltip();
 
 // Standalone elements.
+safeDefine(AirPlayButtonElement);
+safeDefine(AudioTrackRadioGroupElement);
 safeDefine(BufferingIndicatorElement);
 safeDefine(CaptionsButtonElement);
 safeDefine(CastButtonElement);
@@ -61,11 +71,10 @@ safeDefine(MuteButtonElement);
 safeDefine(PiPButtonElement);
 safeDefine(PlayButtonElement);
 safeDefine(PlaybackRateButtonElement);
-safeDefine(PlaybackRateOptionsElement);
-safeDefine(PlaybackRateMenuTriggerElement);
-safeDefine(PlaybackRateMenuElement);
+safeDefine(PlaybackRateRadioGroupElement);
+safeDefine(CaptionsRadioGroupElement);
 safeDefine(PopoverElement);
 safeDefine(PosterElement);
+safeDefine(QualityRadioGroupElement);
 safeDefine(SeekButtonElement);
-safeDefine(TooltipElement);
-safeDefine(TooltipGroupElement);
+safeDefine(TextElement);

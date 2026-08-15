@@ -11,30 +11,33 @@ import {
   applyStateDataAttrs,
   createTooltip,
   createTransition,
-  getAnchorNameStyle,
-  getAnchorPositionStyle,
-  getPopupPositionRect,
-  getPositioningBoundaryRect,
+  HOTKEY_SHORTCUT_CHANGE_EVENT,
   type PositioningBoundary,
-  resolveOffsets,
-  resolvePositioningBoundary,
   type TooltipApi,
   type TooltipChangeDetails,
   type TooltipOpenChangeReason,
 } from '@videojs/core/dom';
+import { type Text, translateText } from '@videojs/core/i18n';
 import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
 import { ContextConsumer } from '@videojs/element/context';
 import type { State } from '@videojs/store';
 import { SnapshotController } from '@videojs/store/html';
-import { applyStyles, supportsAnchorPositioning, tryHidePopover, tryShowPopover } from '@videojs/utils/dom';
-
+import { listen, tryHidePopover, tryShowPopover } from '@videojs/utils/dom';
+import { isFunction } from '@videojs/utils/predicate';
+import { i18nContext } from '../../i18n/context';
+import { I18nController } from '../../i18n/controller';
 import { containerContext } from '../../player/context';
+import { popupGroupContext } from '../../player/popup-group-context';
 import { MediaElement } from '../media-element';
 import { PositionController } from '../position-controller';
 import { tooltipGroupContext } from './context';
+import { TooltipLabelElement } from './tooltip-label-element';
+import { TooltipShortcutElement } from './tooltip-shortcut-element';
 
 type TriggerElement = HTMLElement & {
-  getLabel(): string | undefined;
+  getLabel(): Text | string | undefined;
+  getResolvedLabel?(): string | undefined;
+  getShortcut?: (() => string | undefined) | undefined;
   $state: State<ButtonState>;
 };
 
@@ -55,7 +58,8 @@ export class TooltipElement extends MediaElement {
     disableHoverablePopup: { type: Boolean, attribute: 'disable-hoverable-popup' },
     disabled: { type: Boolean },
     boundary: { type: String },
-  } satisfies PropertyDeclarationMap<keyof TooltipCore.Props | 'boundary'>;
+    trigger: { type: String },
+  } satisfies PropertyDeclarationMap<keyof TooltipCore.Props | 'boundary' | 'trigger'>;
 
   open = TooltipCore.defaultProps.open;
   defaultOpen = TooltipCore.defaultProps.defaultOpen;
@@ -66,10 +70,13 @@ export class TooltipElement extends MediaElement {
   disableHoverablePopup = TooltipCore.defaultProps.disableHoverablePopup;
   disabled = TooltipCore.defaultProps.disabled;
   boundary: PositioningBoundary = 'container';
+  trigger = '';
 
   readonly #core = new TooltipCore();
+  readonly #i18n = new I18nController(this, i18nContext);
   readonly #groupConsumer = new ContextConsumer(this, { context: tooltipGroupContext });
   readonly #containerCtx = new ContextConsumer(this, { context: containerContext, subscribe: true });
+  readonly #popupGroupCtx = new ContextConsumer(this, { context: popupGroupContext });
   readonly #position = new PositionController(this);
   #tooltip: TooltipApi | null = null;
   #snapshot: SnapshotController<TooltipInput> | null = null;
@@ -99,6 +106,7 @@ export class TooltipElement extends MediaElement {
       disabled: () => this.disabled,
       // Lazy getter — group may arrive after connect via context.
       group: () => this.#groupConsumer.value,
+      popupGroup: () => this.#popupGroupCtx.value,
     });
 
     // Register self as the popup element — the element IS the popup.
@@ -159,9 +167,12 @@ export class TooltipElement extends MediaElement {
     super.update(_changed);
     if (!this.#tooltip) return;
 
-    // Discover trigger via commandfor linkage.
-    const triggerEl = this.#position.findTrigger();
+    const triggerEl = this.#position.findTrigger(this.trigger);
     this.#syncTrigger(triggerEl);
+
+    if (this.#currentTrigger && isLabelTrigger(this.#currentTrigger)) {
+      this.#syncContent(this.#currentTrigger);
+    }
 
     // Derive state from core + input.
     const input = this.#tooltip.input.current;
@@ -180,39 +191,21 @@ export class TooltipElement extends MediaElement {
       tryHidePopover(this);
     }
 
-    // Apply anchor-name to the discovered trigger for CSS positioning.
-    if (this.#currentTrigger) {
-      applyStyles(this.#currentTrigger, getAnchorNameStyle(this.id));
-    }
-
     // Skip positioning when closed — no rects to measure.
     if (!state.open) {
       this.#position.cleanup();
       return;
     }
 
-    // Apply positioning styles to self.
-    const posOpts = { side: state.side, align: state.align };
-    const boundaryElement = this.#getBoundaryElement();
-    const triggerRect = this.#currentTrigger?.getBoundingClientRect();
-    const boundaryRect = getPositioningBoundaryRect(boundaryElement);
-    const offsets = resolveOffsets(this, TooltipCSSVars);
-
-    if (supportsAnchorPositioning()) {
-      applyStyles(
-        this,
-        getAnchorPositionStyle(this.id, posOpts, triggerRect, undefined, boundaryRect, offsets, TooltipCSSVars)
-      );
-    } else {
-      // JS fallback: measure rects and resolve CSS var offsets.
-      const selfRect = getPopupPositionRect(this);
-      applyStyles(
-        this,
-        getAnchorPositionStyle(this.id, posOpts, triggerRect, selfRect, boundaryRect, offsets, TooltipCSSVars)
-      );
-    }
-
-    this.#position.sync(this.#currentTrigger, boundaryElement);
+    this.#position.sync({
+      anchorName: this.id,
+      position: { side: state.side, align: state.align },
+      trigger: this.#currentTrigger,
+      boundary: this.boundary,
+      container: this.#containerCtx.value?.container ?? null,
+      cssVars: TooltipCSSVars,
+      onSideChange: (side) => this.setAttribute(TooltipDataAttrs.side, side),
+    });
   }
 
   // --- Trigger management ---
@@ -234,28 +227,43 @@ export class TooltipElement extends MediaElement {
         triggerEl.$state.subscribe(() => this.#syncContent(triggerEl), {
           signal: this.#triggerAbort.signal,
         });
+        listen(triggerEl, HOTKEY_SHORTCUT_CHANGE_EVENT, () => this.#syncContent(triggerEl), {
+          signal: this.#triggerAbort.signal,
+        });
       }
     }
   }
 
   #syncContent(triggerEl: TriggerElement): void {
-    this.textContent = triggerEl.getLabel() ?? '';
+    const label = triggerEl.getLabel();
+    let resolved = isFunction(triggerEl.getResolvedLabel) ? triggerEl.getResolvedLabel() : undefined;
+    if (resolved === undefined && label) {
+      resolved = translateText(label, this.#i18n.value);
+    }
+    const shortcut = triggerEl.getShortcut?.();
+
+    let labelEl = TooltipLabelElement.findIn(this);
+    let shortcutEl = TooltipShortcutElement.findIn(this);
+
+    if (!labelEl && !shortcutEl) {
+      if (this.#hostHasAuthoredTooltipContent()) return;
+
+      labelEl = TooltipLabelElement.create();
+      shortcutEl = TooltipShortcutElement.create();
+      this.replaceChildren(labelEl, shortcutEl);
+    }
+
+    labelEl?.setSyncedText(resolved ?? '');
+    shortcutEl?.setSyncedShortcut(shortcut);
+  }
+
+  #hostHasAuthoredTooltipContent(): boolean {
+    return Array.from(this.childNodes).some((node) => !!node.textContent?.trim());
   }
 
   #cleanupTrigger(): void {
-    if (this.#currentTrigger) {
-      this.#currentTrigger.style.removeProperty('anchor-name');
-    }
-
     this.#triggerAbort?.abort();
     this.#triggerAbort = null;
     this.#currentTrigger = null;
-  }
-
-  #getBoundaryElement(): Element | null {
-    return resolvePositioningBoundary(this.boundary, {
-      container: this.#containerCtx.value?.container ?? null,
-      root: this.getRootNode() as Document | ShadowRoot,
-    });
   }
 }

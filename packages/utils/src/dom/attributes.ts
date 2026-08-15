@@ -1,3 +1,28 @@
+import { escapeHtml } from '../string/escape-html';
+
+export interface AttributeSnapshotEntry {
+  name: string;
+  value: string | null;
+}
+
+export type AttributeSnapshot = readonly AttributeSnapshotEntry[];
+
+/** Capture authored values for the selected attributes. */
+export function snapshotAttributes(element: Element, names: Iterable<string>): AttributeSnapshot {
+  return [...names].map((name) => ({ name, value: element.getAttribute(name) }));
+}
+
+/** Restore a snapshot created by `snapshotAttributes`. */
+export function restoreAttributes(element: Element, snapshot: AttributeSnapshot): void {
+  for (const { name, value } of snapshot) {
+    if (value === null) {
+      element.removeAttribute(name);
+    } else {
+      element.setAttribute(name, value);
+    }
+  }
+}
+
 /**
  * Convert a NamedNodeMap to a plain object.
  */
@@ -15,9 +40,9 @@ export function namedNodeMapToObject(namedNodeMap: NamedNodeMap) {
 export function serializeAttributes(attrs: Record<string, string>) {
   let html = '';
   for (const key in attrs) {
-    const value = attrs[key];
+    const value = attrs[key]!;
     if (value === '') html += ` ${key}`;
-    else html += ` ${key}="${value}"`;
+    else html += ` ${key}="${escapeHtml(value)}"`;
   }
   return html;
 }

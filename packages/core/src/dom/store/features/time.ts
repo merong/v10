@@ -1,8 +1,8 @@
+import type { MediaTimeState } from '@videojs/media';
+import { hasMetadata, isMediaBufferCapable, isMediaSeekCapable, isMediaSourceCapable } from '@videojs/media';
 import { listen, onEvent } from '@videojs/utils/dom';
 import { noop } from '@videojs/utils/function';
-import type { MediaTimeState } from '../../../core/media/state';
 import { definePlayerFeature } from '../../feature';
-import { hasMetadata, isMediaBufferCapable, isMediaSeekCapable, isMediaSourceCapable } from '../../media/predicate';
 import { signalKeys } from '../signal-keys';
 
 export const timeFeature = definePlayerFeature({

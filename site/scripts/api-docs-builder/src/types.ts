@@ -15,9 +15,24 @@ export { ComponentReferenceSchema, PartReferenceSchema } from '../../../src/type
 
 export type { FeatureActionDef, FeatureReference, FeatureStateDef } from '../../../src/types/feature-reference.js';
 export { FeatureReferenceSchema } from '../../../src/types/feature-reference.js';
-
-export type { PresetReference, PresetSkinDef } from '../../../src/types/preset-reference.js';
+export type {
+  HostPropertyDef,
+  HtmlMediaReference,
+  MediaEventDef,
+  MediaReference,
+  MediaTargetTag,
+  ReactMediaReference,
+} from '../../../src/types/media-reference.js';
+export { MediaReferenceSchema } from '../../../src/types/media-reference.js';
+export type {
+  PresetFeatureRef,
+  PresetReference,
+  PresetSkinDef,
+} from '../../../src/types/preset-reference.js';
 export { PresetReferenceSchema } from '../../../src/types/preset-reference.js';
+
+export type { UtilReference } from '../../../src/types/util-reference.js';
+export { UtilReferenceSchema } from '../../../src/types/util-reference.js';
 
 /**
  * Discovered part within a multi-part component.
@@ -59,6 +74,14 @@ export interface ComponentSource {
   htmlPath?: string;
   /** Path to index.parts.ts (if multi-part) */
   partsIndexPath?: string;
+  /** Extra part-scoped data-attrs files ({kebab}-{x}-data-attrs.ts with a `@parts` tag) */
+  extraDataAttrs?: ExtraDataAttrsSource[];
+}
+
+export interface ExtraDataAttrsSource {
+  path: string;
+  /** Part kebabs listed in the `@parts` JSDoc tag on the file's export */
+  parts: string[];
 }
 
 /**
@@ -96,4 +119,5 @@ export interface CSSVarsExtraction {
 
 export interface HtmlExtraction {
   tagName: string;
+  properties: string[];
 }

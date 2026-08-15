@@ -9,7 +9,7 @@ import DocsLink from '@/components/docs/DocsLink.astro';
 This guide covers how to create API reference pages — both component references and util references (hooks, controllers, mixins) under `reference/` in the docs sidebar.
 
 <Aside type="tip">
-Reference pages are scaffolded with the `api-reference` Claude skill. Run `/api-reference play-button` to generate a reference page interactively.
+Reference pages use the portable `write-api-reference` agent skill. Invoke `/write-api-reference play-button` in clients that expose skills as slash commands.
 </Aside>
 
 ## Prerequisites
@@ -44,7 +44,7 @@ The builder relies on file naming conventions to discover components:
 | React component | `packages/react/src/ui/{name}/` | `packages/react/src/ui/play-button/` |
 | Multi-part detection | `index.parts.ts` | `packages/react/src/ui/slider/index.parts.ts` |
 
-If the builder output is missing or incomplete, check that your files match these conventions. See `.claude/skills/api-reference/references/builder-conventions.md` for the full list.
+If the builder output is missing or incomplete, check that your files match these conventions. See `.agents/skills/write-api-reference/references/builder-conventions.md` for the full list.
 
 ## Create demo files
 
@@ -98,14 +98,36 @@ React and HTML demos for the same variant should use matching BEM structures.
 
 ### Video and poster sources
 
-All demos use these URLs:
+Demo media sources live in `site/src/consts.ts`. HTML and React demo files use placeholders from `site/scripts/replace-demo-placeholders.ts`; the site resolves them for both the live demo and its source tab, so displayed source remains copy-paste ready.
 
-These demo assets are hosted by [Mux](https://www.mux.com?utm_source=videojs&utm_campaign=vjs10):
+Use the matching placeholder instead of hardcoding a media URL in a demo:
+
+| Purpose | Demo placeholder |
+| --- | --- |
+| Default MP4 | `{{VJS10_DEMO_VIDEO_MP4}}` |
+| Default HLS | `{{VJS10_DEMO_VIDEO_HLS}}` |
+| Default poster | `{{VJS10_DEMO_POSTER}}` |
+| Default storyboard | `{{VJS10_DEMO_STORYBOARD}}` |
+| Background video | `{{VJS10_DEMO_BACKGROUND_VIDEO_MP4}}` |
+| DASH | `{{VJS10_DEMO_DASH}}` |
+| Quality renditions | `{{VJS8_DEMO_VIDEO_HLS}}` |
+| Multi-language audio and renditions | `{{VJS10_MULTI_AUDIO_DEMO_VIDEO_HLS}}` |
+
+The default demo assets are hosted by [Mux](https://www.mux.com?utm_source=videojs&utm_campaign=vjs10):
 
 ```
 Video: https://stream.mux.com/BV3YZtogl89mg9VcNBhhnHm02Y34zI1nlMuMQfAbl3dM/highest.mp4
 Poster: https://image.mux.com/BV3YZtogl89mg9VcNBhhnHm02Y34zI1nlMuMQfAbl3dM/thumbnail.jpg
 ```
+
+Components that need adaptive streams use `<HlsJsVideo>` / `<hlsjs-video>` with an HLS source instead. Pick by what the component consumes:
+
+```
+Renditions (quality):          https://stream.mux.com/lhnU49l1VGi3zrTAZhDm9LUUxSjpaPW9BL4jY25Kwo4.m3u8
+Multi-language audio (+ renditions): https://stream.mux.com/s41JYeqIpBMBzE4OzxDyGR2yrp2hD1CQ6gJN9SlVGDQ.m3u8
+```
+
+The default mp4 has a single rendition and a single audio track — quality and audio-track demos render nothing against it.
 
 All demo videos use `autoplay muted playsinline loop` (React: `autoPlay muted playsInline loop`).
 
@@ -161,7 +183,7 @@ import basicUsageHtmlTs from "@/components/docs/demos/{name}/html/css/BasicUsage
 
 After imports, the page follows this order:
 
-1. **Anatomy** — show the component markup for each framework using `<FrameworkCase>`
+1. **Anatomy** — show part nesting with self-closing placeholders for each framework using `<FrameworkCase>`, following the [Base UI anatomy convention](https://base-ui.com/react/overview/quick-start). No hooks, state, handlers, or option mapping — working code belongs in Examples.
 2. **Prose sections** (optional, as needed):
    - **Behavior** — state transitions, timing, interaction logic
    - **Styling** — data attribute CSS selectors
@@ -240,16 +262,19 @@ Util reference JSON is at `site/src/content/generated-util-reference/{slug}.json
 
 ## Add to the sidebar
 
-Open `site/src/docs.config.ts` and add your page alphabetically within the appropriate section:
+Open `site/src/docs.config.ts` and add your page to the appropriate category under **API Reference**:
 
-- **Components** — UI component reference pages
-- **Selectors** — State selectors (visible to both frameworks)
-- **Hooks & Utilities** (`frameworks: ['react']`) — React hooks and utilities
-- **Controllers & Mixins** (`frameworks: ['html']`) — HTML controllers and mixins
+- **UI Components** — UI component reference pages, sorted alphabetically
+- **Media Components** — media elements that handle streaming protocols and playback
+- **Player Features** — feature modules passed to `createPlayer`
+- **Utilities** — hooks, utilities, controllers, and mixins. Commonly used entries
+  go at the top of the list; everything else follows.
+
+The categories are flat by design, so don't nest a new subsection inside them. Mark framework-specific entries with `frameworks: ['react']` or `frameworks: ['html']` on the entry itself.
 
 ```ts
 {
-  sidebarLabel: 'Components',
+  sidebarLabel: 'UI Components',
   contents: [
     // sorted alphabetically
     { slug: 'reference/play-button' },

@@ -42,7 +42,11 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'behaviors',
-          include: ['src/playback/behaviors/**/*.test.ts', 'src/playback/actors/**/*.test.ts'],
+          include: [
+            'src/playback/behaviors/**/*.test.ts',
+            'src/playback/actors/**/*.test.ts',
+            'src/playback/primitives/**/*.test.ts',
+          ],
           exclude: ['src/playback/behaviors/dom/**', 'src/playback/actors/dom/**'],
         },
       },
@@ -71,6 +75,22 @@ export default defineConfig({
         test: {
           name: 'playback-engines',
           include: ['src/playback/engines/**/*.test.ts'],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            screenshotFailures: false,
+            instances: [{ browser: 'chromium' }],
+          },
+        },
+      },
+      {
+        extends: true,
+        test: {
+          // The Medias over the engines. Browser-bound like the engines they
+          // drive: they construct a real composition, which reaches MediaSource.
+          name: 'playback-adapters',
+          include: ['src/playback/adapters/**/*.test.ts'],
           browser: {
             enabled: true,
             headless: true,

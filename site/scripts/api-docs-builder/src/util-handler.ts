@@ -34,26 +34,13 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { kebabCase } from 'es-toolkit/string';
 import * as ts from 'typescript';
 import * as tae from 'typescript-api-extractor';
-import {
-  type ParamDef,
-  type ReturnValue,
-  type UtilOverload,
-  type UtilReference,
-  UtilReferenceSchema,
-} from '../../../src/types/util-reference.js';
+import type { ParamDef, ReturnValue, UtilOverload, UtilReference } from '../../../src/types/util-reference.js';
+import { utilReferenceSlug } from '../../../src/utils/utilReferenceSlug.js';
 import { abbreviateType, formatDetailedType, formatType } from './formatter.js';
-
-const PREFIX = '\x1b[35m[api-docs-builder]\x1b[0m';
-
-const log = {
-  info: (...args: unknown[]) => console.log(PREFIX, ...args),
-  warn: (...args: unknown[]) => console.warn(PREFIX, '\x1b[33mwarn:\x1b[0m', ...args),
-  error: (...args: unknown[]) => console.error(PREFIX, '\x1b[31merror:\x1b[0m', ...args),
-  success: (...args: unknown[]) => console.log(PREFIX, ...args),
-};
+import { createTypeScriptProgram } from './typescript.js';
+import { getJSDocDescription, getJSDocNodes, getJSDocTagValue, hasJSDocTag, log } from './utils.js';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -75,9 +62,11 @@ interface EntryPoint {
 // (e.g., "create-player" for React, "html-create-player" for HTML).
 const UTIL_ENTRY_POINTS: EntryPoint[] = [
   { index: 'packages/react/src/index.ts', framework: 'react' },
+  { index: 'packages/react/src/i18n/index.ts', framework: 'react' },
   { index: 'packages/store/src/react/hooks/index.ts', framework: 'react' },
   { index: 'packages/html/src/index.ts', framework: 'html' },
   { index: 'packages/store/src/html/controllers/index.ts', framework: 'html' },
+  { index: 'packages/core/src/core/i18n/index.ts', framework: null },
   { index: 'packages/core/src/dom/store/selectors.ts', framework: null },
   { index: 'packages/store/src/core/selector.ts', framework: null },
 ];
@@ -88,11 +77,12 @@ function resolveModulePath(fromFile: string, specifier: string): string {
   const dir = path.dirname(fromFile);
   const resolved = path.resolve(dir, specifier);
 
-  // Try exact match, then with extensions
+  // Try exact match, then with extensions. Require a file — a bare
+  // directory specifier must fall through to index resolution below.
   const extensions = ['', '.ts', '.tsx'];
   for (const ext of extensions) {
     const full = resolved + ext;
-    if (fs.existsSync(full)) return full;
+    if (fs.existsSync(full) && fs.statSync(full).isFile()) return full;
   }
 
   // Try index files
@@ -104,21 +94,138 @@ function resolveModulePath(fromFile: string, specifier: string): string {
   return resolved;
 }
 
-function resolveLocalModules(indexPath: string): string[] {
-  const sourceFile = ts.createSourceFile(indexPath, fs.readFileSync(indexPath, 'utf-8'), ts.ScriptTarget.Latest, true);
+function isFile(filePath: string): boolean {
+  return fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+}
 
+// Memoized: getUtilEntries resolves the same entry point twice (program
+// creation + discovery), and each pass re-reads every module in the graph.
+const localModulesCache = new Map<string, string[]>();
+
+function resolveLocalModules(indexPath: string): string[] {
+  const cached = localModulesCache.get(indexPath);
+  if (cached) return cached;
+
+  const visited = new Set<string>([indexPath]);
   const localPaths: string[] = [];
 
-  ts.forEachChild(sourceFile, (node) => {
-    if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-      const specifier = node.moduleSpecifier.text;
-      if (specifier.startsWith('.')) {
-        localPaths.push(resolveModulePath(indexPath, specifier));
+  // Post-order: a module's own re-exports are pushed before the module
+  // itself, so declaring files are scanned (and win seenKeys dedup) before
+  // the directory indexes that re-export them.
+  function collect(filePath: string): void {
+    const sourceFile = ts.createSourceFile(filePath, fs.readFileSync(filePath, 'utf-8'), ts.ScriptTarget.Latest, true);
+
+    ts.forEachChild(sourceFile, (node) => {
+      if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+        const specifier = node.moduleSpecifier.text;
+        if (!specifier.startsWith('.')) return;
+
+        const resolved = resolveModulePath(filePath, specifier);
+        if (visited.has(resolved)) return;
+        visited.add(resolved);
+
+        // resolveModulePath falls back to the raw path when nothing matches;
+        // skip anything that isn't a readable file (e.g. a directory with no
+        // index.ts) instead of crashing on the read.
+        if (!isFile(resolved)) return;
+
+        collect(resolved);
+        localPaths.push(resolved);
       }
+    });
+  }
+
+  collect(indexPath);
+  localModulesCache.set(indexPath, localPaths);
+
+  return localPaths;
+}
+
+// Names actually exported from an entry point, resolving local `export *`
+// chains. External star re-exports (`@videojs/*`) are skipped — they can't
+// make a locally-declared symbol visible. Discovery scans whole modules, so
+// without this filter a deep-scanned file's internal exports (never
+// re-exported up to the entry) would be documented as public API.
+function collectVisibleExportNames(indexPath: string, visited = new Set<string>()): Set<string> {
+  const names = new Set<string>();
+  if (visited.has(indexPath) || !isFile(indexPath)) return names;
+  visited.add(indexPath);
+
+  const sourceFile = ts.createSourceFile(indexPath, fs.readFileSync(indexPath, 'utf-8'), ts.ScriptTarget.Latest, true);
+
+  ts.forEachChild(sourceFile, (node) => {
+    if (ts.isExportDeclaration(node)) {
+      if (node.exportClause && ts.isNamedExports(node.exportClause)) {
+        for (const spec of node.exportClause.elements) {
+          names.add(spec.name.text);
+          if (spec.propertyName) names.add(spec.propertyName.text);
+        }
+      } else if (node.exportClause && ts.isNamespaceExport(node.exportClause)) {
+        names.add(node.exportClause.name.text);
+      } else if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+        const specifier = node.moduleSpecifier.text;
+        if (!specifier.startsWith('.')) return;
+        for (const name of collectVisibleExportNames(resolveModulePath(indexPath, specifier), visited)) {
+          names.add(name);
+        }
+      }
+      return;
+    }
+
+    const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
+    const isExported = modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+    if (!isExported) return;
+
+    if (ts.isVariableStatement(node)) {
+      for (const decl of node.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name)) names.add(decl.name.text);
+      }
+    } else if (
+      (ts.isFunctionDeclaration(node) ||
+        ts.isClassDeclaration(node) ||
+        ts.isInterfaceDeclaration(node) ||
+        ts.isTypeAliasDeclaration(node) ||
+        ts.isEnumDeclaration(node)) &&
+      node.name
+    ) {
+      names.add(node.name.text);
     }
   });
 
-  return localPaths;
+  return names;
+}
+
+function collectDeclaredExportNames(modulePath: string): Set<string> {
+  const names = new Set<string>();
+  const sourceFile = ts.createSourceFile(
+    modulePath,
+    fs.readFileSync(modulePath, 'utf-8'),
+    ts.ScriptTarget.Latest,
+    true
+  );
+
+  ts.forEachChild(sourceFile, (node) => {
+    const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
+    const isExported = modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+    if (!isExported) return;
+
+    if (ts.isVariableStatement(node)) {
+      for (const declaration of node.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name)) names.add(declaration.name.text);
+      }
+    } else if (
+      (ts.isFunctionDeclaration(node) ||
+        ts.isClassDeclaration(node) ||
+        ts.isInterfaceDeclaration(node) ||
+        ts.isTypeAliasDeclaration(node) ||
+        ts.isEnumDeclaration(node)) &&
+      node.name
+    ) {
+      names.add(node.name.text);
+    }
+  });
+
+  return names;
 }
 
 // ─── Phase 2: Convention Matching ──────────────────────────────────
@@ -154,6 +261,25 @@ function getDisplayName(name: string): string {
     return name.replace(/^create/, '');
   }
   return name;
+}
+
+function normalizeDescription(description: unknown): string | undefined {
+  if (!description) return undefined;
+  if (typeof description === 'string') return description;
+  if (Array.isArray(description)) {
+    const text = description
+      .map((part) => {
+        if (typeof part === 'string') return part;
+        if (part && typeof part === 'object' && 'text' in part && typeof part.text === 'string') {
+          return part.text;
+        }
+        return '';
+      })
+      .join('')
+      .trim();
+    return text || undefined;
+  }
+  return undefined;
 }
 
 // ─── Extraction: Functions ─────────────────────────────────────────
@@ -379,7 +505,7 @@ function extractControllerOverloads(filePath: string, program: ts.Program, class
     // Get overload-specific JSDoc
     const label = getJSDocTagValue(decl, 'label');
     if (label) overload.label = label;
-    const jsDoc = getNodeJSDoc(decl);
+    const jsDoc = getJSDocDescription(decl);
     if (jsDoc) overload.description = jsDoc;
 
     return overload;
@@ -418,7 +544,7 @@ function extractPublicMembers(
     if (ts.isGetAccessorDeclaration(member)) {
       const typeStr = member.type ? member.type.getText(sourceFile) : 'unknown';
       const abbreviated = abbreviateType(name, typeStr);
-      const description = getNodeJSDoc(member);
+      const description = getJSDocDescription(member);
 
       const field: { type: string; detailedType?: string; description?: string } = { type: abbreviated ?? typeStr };
       if (abbreviated && typeStr !== abbreviated) field.detailedType = typeStr;
@@ -438,7 +564,7 @@ function extractPublicMembers(
       const retType = member.type ? member.type.getText(sourceFile) : 'void';
       const typeStr = `(${params}) => ${retType}`;
       const abbreviated = abbreviateType(name, typeStr);
-      const description = getNodeJSDoc(member);
+      const description = getJSDocDescription(member);
 
       const field: { type: string; detailedType?: string; description?: string } = { type: abbreviated ?? typeStr };
       if (abbreviated && typeStr !== abbreviated) field.detailedType = typeStr;
@@ -484,7 +610,7 @@ function getOverloadDocs(filePath: string, program: ts.Program, funcName: string
     if (ts.isFunctionDeclaration(node) && node.name?.text === funcName && !node.body) {
       // This is an overload declaration
       docs.push({
-        description: getNodeJSDoc(node),
+        description: getJSDocDescription(node),
         label: getJSDocTagValue(node, 'label'),
       });
     }
@@ -495,22 +621,8 @@ function getOverloadDocs(filePath: string, program: ts.Program, funcName: string
   return docs;
 }
 
-function getNodeJSDoc(node: ts.Node): string | undefined {
-  const jsDocNodes = (node as any).jsDoc as ts.JSDoc[] | undefined;
-  if (!jsDocNodes?.length) return undefined;
-
-  const doc = jsDocNodes[0]!;
-  if (!doc.comment) return undefined;
-
-  if (typeof doc.comment === 'string') return doc.comment;
-
-  // Handle JSDocComment array
-  return doc.comment.map((c: ts.JSDocComment) => ('text' in c ? c.text : '')).join('');
-}
-
 function getJSDocParamDescription(node: ts.Node, paramName: string): string | undefined {
-  const jsDocNodes = (node as any).jsDoc as ts.JSDoc[] | undefined;
-  if (!jsDocNodes?.length) return undefined;
+  const jsDocNodes = getJSDocNodes(node);
 
   for (const doc of jsDocNodes) {
     if (!doc.tags) continue;
@@ -526,39 +638,6 @@ function getJSDocParamDescription(node: ts.Node, paramName: string): string | un
     }
   }
 
-  return undefined;
-}
-
-function hasJSDocTag(node: ts.Node, tagName: string): boolean {
-  const jsDocNodes = (node as any).jsDoc as ts.JSDoc[] | undefined;
-  if (!jsDocNodes?.length) return false;
-
-  for (const doc of jsDocNodes) {
-    if (!doc.tags) continue;
-    for (const tag of doc.tags) {
-      if (tag.tagName.text === tagName) return true;
-    }
-  }
-  return false;
-}
-
-function getJSDocTagValue(node: ts.Node, tagName: string): string | undefined {
-  const jsDocNodes = (node as any).jsDoc as ts.JSDoc[] | undefined;
-  if (!jsDocNodes?.length) return undefined;
-
-  for (const doc of jsDocNodes) {
-    if (!doc.tags) continue;
-    for (const tag of doc.tags) {
-      if (tag.tagName.text === tagName) {
-        if (!tag.comment) return undefined;
-        if (typeof tag.comment === 'string') return tag.comment.trim();
-        return tag.comment
-          .map((c: ts.JSDocComment) => ('text' in c ? c.text : ''))
-          .join('')
-          .trim();
-      }
-    }
-  }
   return undefined;
 }
 
@@ -616,7 +695,7 @@ function discoverExportsFromRawAST(modulePath: string, program: ts.Program): Raw
       !node.body // overload declaration
     ) {
       const name = node.name.text;
-      const jsDoc = getNodeJSDoc(node);
+      const jsDoc = getJSDocDescription(node);
       const hasPublicTag = hasJSDocTag(node, 'public');
 
       // Only add if not already in results (first overload wins for the name)
@@ -641,7 +720,7 @@ function discoverExportsFromRawAST(modulePath: string, program: ts.Program): Raw
       !results.some((r) => r.name === node.name!.text)
     ) {
       const name = node.name.text;
-      const jsDoc = getNodeJSDoc(node);
+      const jsDoc = getJSDocDescription(node);
       const hasPublicTag = hasJSDocTag(node, 'public');
 
       results.push({
@@ -661,7 +740,7 @@ function discoverExportsFromRawAST(modulePath: string, program: ts.Program): Raw
       node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
     ) {
       const name = node.name.text;
-      const jsDoc = getNodeJSDoc(node);
+      const jsDoc = getJSDocDescription(node);
 
       results.push({
         name,
@@ -677,7 +756,7 @@ function discoverExportsFromRawAST(modulePath: string, program: ts.Program): Raw
     if (ts.isVariableStatement(node) && node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) {
       for (const decl of node.declarationList.declarations) {
         if (ts.isIdentifier(decl.name)) {
-          const jsDoc = getNodeJSDoc(node);
+          const jsDoc = getJSDocDescription(node);
           const hasPublicTag = hasJSDocTag(node, 'public');
 
           results.push({
@@ -764,7 +843,7 @@ function buildOverloadFromAST(decl: ts.FunctionDeclaration, sourceFile: ts.Sourc
 
   const label = getJSDocTagValue(decl, 'label');
   if (label) overload.label = label;
-  const doc = getNodeJSDoc(decl);
+  const doc = getJSDocDescription(decl);
   if (doc) overload.description = doc;
 
   return overload;
@@ -798,7 +877,7 @@ function extractReturnTypeFields(
     const name = member.name.text;
     const typeStr = member.type ? member.type.getText(sourceFile) : 'unknown';
     const abbreviated = abbreviateType(name, typeStr);
-    const description = getNodeJSDoc(member);
+    const description = getJSDocDescription(member);
 
     const field: { type: string; detailedType?: string; description?: string } = { type: abbreviated ?? typeStr };
     if (abbreviated && typeStr !== abbreviated) field.detailedType = typeStr;
@@ -843,7 +922,7 @@ function processExport(
   if (!isUtilExport(exportNode)) return;
 
   const displayName = getDisplayName(exportNode.name);
-  const slug = resolveSlugCollision(kebabCase(displayName), entryPoint.framework, seenSlugs);
+  const slug = resolveSlugCollision(utilReferenceSlug(displayName), entryPoint.framework, seenSlugs);
 
   let overloads: UtilOverload[];
 
@@ -861,7 +940,7 @@ function processExport(
     return;
   }
 
-  const description = exportNode.documentation?.description;
+  const description = normalizeDescription(exportNode.documentation?.description);
   const data: UtilReference = {
     name: displayName,
     overloads,
@@ -892,7 +971,7 @@ function processRawExport(
   if (!isRawUtilExport(info)) return;
 
   const displayName = getDisplayName(info.name);
-  const slug = resolveSlugCollision(kebabCase(displayName), entryPoint.framework, seenSlugs);
+  const slug = resolveSlugCollision(utilReferenceSlug(displayName), entryPoint.framework, seenSlugs);
 
   let overloads: UtilOverload[];
 
@@ -940,6 +1019,7 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
     const localModules = resolveLocalModules(indexPath);
     // When the entry point is a leaf module (no re-exports), scan it directly
     const modulesToScan = localModules.length > 0 ? localModules : [indexPath];
+    const visibleNames = collectVisibleExportNames(indexPath);
     const failedModules: string[] = [];
 
     // Collect all TAE exports for type resolution (formatDetailedType)
@@ -949,6 +1029,8 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
     // utilities, contexts, and selectors (e.g., usePlayer, createPlayer, selectPlayback)
     for (const modulePath of modulesToScan) {
       if (!fs.existsSync(modulePath)) continue;
+      const declaredNames = collectDeclaredExportNames(modulePath);
+      if (declaredNames.size === 0) continue;
 
       let ast: tae.ModuleNode;
       try {
@@ -961,6 +1043,13 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
       allExports.push(...ast.exports);
 
       for (const exportNode of ast.exports) {
+        // Re-exported APIs are owned by their declaring module. Local
+        // declarations are scanned post-order, while external package
+        // re-exports are documented by that package's canonical entry point.
+        if (!declaredNames.has(exportNode.name)) continue;
+        // Whole modules are scanned, but only exports that are actually
+        // visible from the entry point are public API.
+        if (!visibleNames.has(exportNode.name)) continue;
         processExport(exportNode, modulePath, entryPoint, program, seenKeys, seenSlugs, entries, allExports);
       }
     }
@@ -989,6 +1078,7 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
     for (const modulePath of failedModules) {
       const rawExports = discoverExportsFromRawAST(modulePath, program);
       for (const info of rawExports) {
+        if (!visibleNames.has(info.name)) continue;
         processRawExport(info, entryPoint, program, seenKeys, seenSlugs, entries);
       }
     }
@@ -1000,7 +1090,7 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
 
       const rawExports = discoverExportsFromRawAST(modulePath, program);
       for (const info of rawExports) {
-        if (!info.isClass) continue;
+        if (!info.isClass || !visibleNames.has(info.name)) continue;
         processRawExport(info, entryPoint, program, seenKeys, seenSlugs, entries);
       }
     }
@@ -1047,11 +1137,7 @@ function createUtilProgram(monorepoRoot: string): ts.Program {
     }
   }
 
-  const tsconfigPath = path.join(monorepoRoot, 'tsconfig.base.json');
-  const config = tae.loadConfig(tsconfigPath);
-  config.options.rootDir = monorepoRoot;
-
-  return ts.createProgram(files, config.options);
+  return createTypeScriptProgram(monorepoRoot, files);
 }
 
 // ─── Public API ────────────────────────────────────────────────────
@@ -1059,43 +1145,4 @@ function createUtilProgram(monorepoRoot: string): ts.Program {
 export function getUtilEntries(monorepoRoot: string): UtilEntry[] {
   const program = createUtilProgram(monorepoRoot);
   return discoverUtilExports(monorepoRoot, program);
-}
-
-export function generateUtilReferences(outputPath: string, monorepoRoot: string): { success: number; errors: number } {
-  if (!fs.existsSync(outputPath)) {
-    fs.mkdirSync(outputPath, { recursive: true });
-  }
-
-  const entries = getUtilEntries(monorepoRoot);
-  let success = 0;
-  let errors = 0;
-
-  log.info(`Found ${entries.length} util APIs. Processing...`);
-
-  for (const entry of entries) {
-    const dataToValidate: Record<string, unknown> = { ...entry.data };
-    if (entry.framework !== null) {
-      dataToValidate.frameworks = [entry.framework];
-    }
-
-    const validated = UtilReferenceSchema.safeParse(dataToValidate);
-
-    if (!validated.success) {
-      log.error(`Schema validation failed for ${entry.data.name} (${entry.slug}):`);
-      for (const issue of validated.error.issues) {
-        log.error(`  - ${issue.path.join('.')}: ${issue.message}`);
-      }
-      errors++;
-      continue;
-    }
-
-    const outputFile = path.join(outputPath, `${entry.slug}.json`);
-    const json = `${JSON.stringify(validated.data, null, 2)}\n`;
-    fs.writeFileSync(outputFile, json);
-
-    log.success(`\u2705 Generated ${path.basename(outputFile)} (${entry.framework ?? 'all'})`);
-    success++;
-  }
-
-  return { success, errors };
 }

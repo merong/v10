@@ -2,9 +2,11 @@
 
 import { VolumeSliderCore, VolumeSliderDataAttrs } from '@videojs/core';
 import { createWheelStep, getSliderCSSVars, logMissingFeature, selectVolume } from '@videojs/core/dom';
+import { translateText } from '@videojs/core/i18n';
 import { listen } from '@videojs/utils/dom';
 import { forwardRef, useCallback, useRef, useState } from 'react';
 
+import { useLocale, useTranslator } from '../../i18n/context';
 import { usePlayer } from '../../player/context';
 import type { UIComponentProps } from '../../utils/types';
 import { useLatestRef } from '../../utils/use-latest-ref';
@@ -16,6 +18,7 @@ const noopVolume = {
   volume: 0,
   muted: false,
   volumeAvailability: 'unsupported' as const,
+  mutedAvailability: 'unsupported' as const,
   setVolume: () => 0,
   toggleMuted: () => false,
 };
@@ -44,13 +47,18 @@ export const VolumeSliderRoot = forwardRef<HTMLDivElement, VolumeSliderRootProps
     } = componentProps;
 
     const volume = usePlayer(selectVolume);
+    const translator = useTranslator();
+    const locale = useLocale();
+    const isUnavailable = volume?.volumeAvailability !== 'available';
+    const isDisabled = Boolean(disabled) || isUnavailable;
 
     const [core] = useState(() => new VolumeSliderCore());
     core.setProps({ label, orientation, step, largeStep, wheelStep, disabled, thumbAlignment });
+    core.setFormatLocale(locale);
 
     // Keep refs to the latest dynamic values for stable closures.
     const volumeRef = useLatestRef(volume);
-    const disabledRef = useLatestRef(disabled);
+    const disabledRef = useLatestRef(isDisabled);
 
     const getPercent = () => (volumeRef.current?.volume ?? 0) * 100;
     const getStepPercent = () => core.getStepPercent();
@@ -66,7 +74,7 @@ export const VolumeSliderRoot = forwardRef<HTMLDivElement, VolumeSliderRootProps
       getStepPercent,
       getLargeStepPercent: () => core.getLargeStepPercent(),
       orientation,
-      disabled,
+      disabled: isDisabled,
       adjustPercent: (rawPercent, thumbSize, trackSize) =>
         core.adjustPercentForAlignment(rawPercent, thumbSize, trackSize),
       getCSSVars: getSliderCSSVars,
@@ -78,7 +86,7 @@ export const VolumeSliderRoot = forwardRef<HTMLDivElement, VolumeSliderRootProps
 
     const [wheelHandler] = useState(() =>
       createWheelStep({
-        isDisabled: () => !!disabledRef.current || !volumeRef.current,
+        isDisabled: () => disabledRef.current,
         getPercent: () => (volumeRef.current?.volume ?? 0) * 100,
         getStepPercent: () => core.getWheelStepPercent(),
         onValueChange: (percent) => volumeRef.current?.setVolume(percent / 100),
@@ -104,6 +112,8 @@ export const VolumeSliderRoot = forwardRef<HTMLDivElement, VolumeSliderRootProps
       return null;
     }
 
+    if (state.hidden) return null;
+
     return (
       <SliderProvider
         value={{
@@ -112,7 +122,18 @@ export const VolumeSliderRoot = forwardRef<HTMLDivElement, VolumeSliderRootProps
           thumbRef,
           thumbProps,
           stateAttrMap: VolumeSliderDataAttrs,
-          getAttrs: (sliderState) => core.getAttrs(sliderState as VolumeSliderCore.State),
+          getAttrs: (sliderState) => {
+            const attrs = core.getAttrs(sliderState as VolumeSliderCore.State);
+            return {
+              ...attrs,
+              'aria-label': translateText(attrs['aria-label'], translator),
+              'aria-valuetext': translateText(
+                attrs['aria-valuetext'],
+                translator,
+                core.getValueTextParams(sliderState as VolumeSliderCore.State)
+              ),
+            };
+          },
           formatValue: (value) => `${Math.round(value)}%`,
         }}
       >

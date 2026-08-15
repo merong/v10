@@ -1,4 +1,5 @@
 import { createState, type State } from '@videojs/store';
+import { observeResize } from '@videojs/utils/dom';
 import { throttle } from '@videojs/utils/function';
 import { clamp, roundToStep } from '@videojs/utils/number';
 import { isNull } from '@videojs/utils/predicate';
@@ -291,12 +292,6 @@ export function createSlider(options: SliderOptions): SliderApi {
         case 'End':
           newPercent = 100;
           break;
-        default:
-          // Suppress when any modifier is held to avoid hijacking browser/OS shortcuts.
-          if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key >= '0' && event.key <= '9') {
-            newPercent = Number(event.key) * 10;
-          }
-          break;
       }
 
       if (newPercent !== null) {
@@ -337,11 +332,10 @@ export function createSlider(options: SliderOptions): SliderApi {
     return adjusted;
   }
 
-  let resizeObserver: ResizeObserver | null = null;
+  let stopObservingResize: (() => void) | null = null;
 
   if (options.onResize) {
-    resizeObserver = new ResizeObserver(() => options.onResize!());
-    resizeObserver.observe(options.getElement());
+    stopObservingResize = observeResize(options.getElement(), () => options.onResize!());
   }
 
   const rootStyle: SliderRootStyle = { touchAction: 'none', userSelect: 'none' };
@@ -355,7 +349,7 @@ export function createSlider(options: SliderOptions): SliderApi {
     destroy() {
       if (abort.signal.aborted) return;
       abort.abort();
-      resizeObserver?.disconnect();
+      stopObservingResize?.();
       releaseCapture();
       cleanup();
     },

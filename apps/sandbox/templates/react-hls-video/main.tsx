@@ -1,5 +1,7 @@
 import '@app/styles.css';
-import { LiveVideoProvider, VideoProvider } from '@app/shared/react/providers';
+import { Chapters } from '@app/shared/react/chapters';
+import { LiveVideoPlayer, VideoPlayer } from '@app/shared/react/players';
+import { SandboxI18nProvider } from '@app/shared/react/sandbox-i18n';
 import { VideoSkinComponent } from '@app/shared/react/skins';
 import { Storyboard } from '@app/shared/react/storyboard';
 import { useAutoplay } from '@app/shared/react/use-autoplay';
@@ -10,7 +12,7 @@ import { usePreload } from '@app/shared/react/use-preload';
 import { useSkin } from '@app/shared/react/use-skin';
 import { useSource } from '@app/shared/react/use-source';
 import { useStoryboard } from '@app/shared/react/use-storyboard';
-import { isLiveSource, SOURCES } from '@app/shared/sources';
+import { getChapters, isLiveSource, SOURCES } from '@app/shared/sources';
 import type { Styling } from '@app/types';
 import { HlsVideo } from '@videojs/react/media/hls-video';
 import { useMemo } from 'react';
@@ -31,30 +33,33 @@ function App() {
   const muted = useMuted();
   const loop = useLoop();
   const preload = usePreload();
-  const Provider = live ? LiveVideoProvider : VideoProvider;
+  const Player = live ? LiveVideoPlayer : VideoPlayer;
 
   return (
-    <Provider>
-      <VideoSkinComponent
-        poster={poster}
-        skin={skin}
-        styling={styling}
-        live={live}
-        className="aspect-video max-w-4xl mx-auto"
-      >
-        <HlsVideo
-          src={SOURCES[source].url}
-          autoPlay={autoplay}
-          muted={muted}
-          loop={loop}
-          preload={preload}
-          playsInline
-          crossOrigin="anonymous"
+    <SandboxI18nProvider>
+      <Player>
+        <VideoSkinComponent
+          poster={poster}
+          skin={skin}
+          styling={styling}
+          live={live}
+          className="aspect-video max-w-4xl mx-auto"
         >
-          <Storyboard src={storyboard} />
-        </HlsVideo>
-      </VideoSkinComponent>
-    </Provider>
+          <HlsVideo
+            src={SOURCES[source].url ?? ''}
+            autoPlay={autoplay}
+            muted={muted}
+            loop={loop}
+            preload={preload}
+            playsInline
+            crossOrigin="anonymous"
+          >
+            <Chapters tracks={getChapters(source)} />
+            <Storyboard src={storyboard} />
+          </HlsVideo>
+        </VideoSkinComponent>
+      </Player>
+    </SandboxI18nProvider>
   );
 }
 

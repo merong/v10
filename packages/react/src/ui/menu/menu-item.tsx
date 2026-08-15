@@ -6,7 +6,7 @@ import { forwardRef, useCallback, useEffect, useRef } from 'react';
 
 import type { UIComponentProps } from '../../utils/types';
 import { renderElement } from '../../utils/use-render';
-import { useMenuContext, useSubMenuContext } from './context';
+import { useMenuContext } from './context';
 
 export interface MenuItemProps extends UIComponentProps<'div', MenuState> {
   /** Called when the item is selected. */
@@ -20,9 +20,7 @@ export const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(function MenuI
   { render, className, style, onSelect, disabled, onClick, ...elementProps },
   forwardedRef
 ) {
-  const { menu, state, stateAttrMap } = useMenuContext();
-  const subMenuCtx = useSubMenuContext();
-  const parentMenu = subMenuCtx?.parentMenu.menu ?? null;
+  const { menu, state } = useMenuContext();
   const elementRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,10 +33,11 @@ export const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(function MenuI
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (disabled) return;
       onClick?.(event);
+      if (event.defaultPrevented) return;
       onSelect?.();
-      completeMenuItemSelection(menu, parentMenu);
+      completeMenuItemSelection(menu);
     },
-    [disabled, onClick, onSelect, menu, parentMenu]
+    [disabled, onClick, onSelect, menu]
   );
 
   const handlePointerEnter = useCallback(() => {
@@ -47,25 +46,65 @@ export const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(function MenuI
     menu.highlight(element, { focus: false });
   }, [menu, disabled]);
 
+  return (
+    <MenuItemContent
+      disabled={disabled}
+      elementProps={elementProps}
+      onClick={handleClick}
+      onPointerEnter={handlePointerEnter}
+      render={render}
+      className={className}
+      style={style}
+      state={state}
+      forwardedRef={forwardedRef}
+      elementRef={elementRef}
+    />
+  );
+});
+
+interface MenuItemContentProps {
+  disabled: boolean | undefined;
+  elementProps: Record<string, unknown>;
+  onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onPointerEnter: () => void;
+  render: MenuItemProps['render'];
+  className: MenuItemProps['className'];
+  style: MenuItemProps['style'];
+  state: MenuState;
+  forwardedRef: React.ForwardedRef<HTMLDivElement>;
+  elementRef: React.RefObject<HTMLDivElement | null>;
+}
+
+function MenuItemContent({
+  disabled,
+  elementProps,
+  onClick,
+  onPointerEnter,
+  render,
+  className,
+  style,
+  state,
+  forwardedRef,
+  elementRef,
+}: MenuItemContentProps) {
   return renderElement(
     'div',
     { render, className, style },
     {
       state,
-      stateAttrMap,
       ref: [forwardedRef, elementRef],
       props: [
         {
           role: 'menuitem' as const,
           'aria-disabled': disabled ? true : undefined,
-          onClick: handleClick,
-          onPointerEnter: handlePointerEnter,
+          onClick,
+          onPointerEnter,
         },
         elementProps,
       ],
     }
   );
-});
+}
 
 export namespace MenuItem {
   export type Props = MenuItemProps;

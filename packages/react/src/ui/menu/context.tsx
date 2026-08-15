@@ -7,22 +7,15 @@ import { createContext, useContext } from 'react';
 export interface MenuContextValue {
   core: MenuCore;
   menu: MenuApi;
+  parent: MenuContextValue | null;
   state: MenuState;
+  preferredSide: MenuState['side'];
+  setPositionedSide: (side: MenuState['side']) => void;
   stateAttrMap: StateAttrMap<MenuState>;
   contentId: string;
   anchorName: string;
   boundary: PositioningBoundary;
   container: MediaContainer | null;
-  /** ID of the currently visible submenu, or null when at root view. */
-  activeSubMenuId: string | null;
-  /** Triggerer ID of the active submenu entry (for focus restoration on pop). */
-  activeSubMenuTriggerId: string | null;
-  /** Direction of the most recent navigation. */
-  navigationDirection: 'forward' | 'back';
-  /** Push a submenu onto the navigation stack. */
-  push: (menuId: string, triggerId: string) => void;
-  /** Pop the current submenu from the navigation stack. */
-  pop: () => void;
 }
 
 const MenuContext = createContext<MenuContextValue | null>(null);
@@ -40,24 +33,19 @@ export function useOptionalMenuContext(): MenuContextValue | null {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-menu identity context — provided by a nested Menu.Root so child parts
-// (Trigger, Content) can read the submenu ID and access the parent menu for
-// push/pop and item registration.
+// Group context — shared by group-like parts and MenuGroupLabel
 // ---------------------------------------------------------------------------
 
-export interface SubMenuContextValue {
-  /** Stable ID for this submenu (matches the contentId of the nested Root). */
-  subMenuId: string;
-  /** The parent menu's context — used by Trigger to register and push. */
-  parentMenu: MenuContextValue;
+export interface MenuGroupContextValue {
+  registerLabel: (id: string) => () => void;
 }
 
-const SubMenuContext = createContext<SubMenuContextValue | null>(null);
+const MenuGroupContext = createContext<MenuGroupContextValue | null>(null);
 
-export const SubMenuContextProvider = SubMenuContext.Provider;
+export const MenuGroupContextProvider = MenuGroupContext.Provider;
 
-export function useSubMenuContext(): SubMenuContextValue | null {
-  return useContext(SubMenuContext);
+export function useMenuGroupContext(): MenuGroupContextValue | null {
+  return useContext(MenuGroupContext);
 }
 
 // ---------------------------------------------------------------------------
@@ -77,4 +65,16 @@ export function useMenuRadioGroupContext(): MenuRadioGroupContextValue {
   const ctx = useContext(MenuRadioGroupContext);
   if (!ctx) throw new Error('Menu.RadioItem must be used within a Menu.RadioGroup');
   return ctx;
+}
+
+// ---------------------------------------------------------------------------
+// Root trigger render context — provided by Menu.Trigger for render children.
+// ---------------------------------------------------------------------------
+
+const MenuTriggerChildContext = createContext(false);
+
+export const MenuTriggerChildContextProvider = MenuTriggerChildContext.Provider;
+
+export function useOptionalMenuTriggerChildContext(): boolean {
+  return useContext(MenuTriggerChildContext);
 }

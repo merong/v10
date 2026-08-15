@@ -10,10 +10,60 @@ export type {
 } from '@videojs/element';
 // Element — reactive primitives for users extending MediaElement
 export { DestroyMixin, ReactiveElement } from '@videojs/element';
-
+// Media predicates
+export {
+  hasMetadata,
+  isMediaAudioTrackCapable,
+  isMediaBufferCapable,
+  isMediaErrorCapable,
+  isMediaLiveCapable,
+  isMediaPauseCapable,
+  isMediaPlaybackRateCapable,
+  isMediaRemotePlaybackCapable,
+  isMediaSeekCapable,
+  isMediaSourceCapable,
+  isMediaStreamTypeCapable,
+  isMediaTextTrackCapable,
+  isMediaVideoDimensionsCapable,
+  isMediaVideoRenditionCapable,
+  isMediaVolumeCapable,
+  isQuerySelectorAllCapable,
+  type NodeListLike,
+} from '@videojs/media';
+// Media
+export * from '@videojs/media/dom';
 // Store
 export type { Comparator, Selector } from '@videojs/store';
 export { createSelector, shallowEqual } from '@videojs/store';
+export type {
+  CreateI18nOptions,
+  CreateI18nResult,
+  FlatTranslations,
+  I18nContextValue,
+  Locale,
+  TranslationParams,
+  Translations,
+  Translator,
+} from './i18n';
+export {
+  createI18n,
+  createTranslator,
+  findLocaleKeys,
+  getI18nTranslations,
+  hasRegisteredLocale,
+  I18nController,
+  I18nProviderMixin,
+  I18nTextMixin,
+  MediaI18nProviderElement,
+  MediaTextElement,
+  onI18nRegistryChange,
+  registerI18n,
+  resolvePlayerLocale,
+  resolveProviderLocale,
+} from './i18n';
+export type { I18nContext as I18nLitContext } from './i18n/context';
+// i18n — `@videojs/html/i18n` registers `<media-i18n>` / `<media-text>`.
+export { i18nContext } from './i18n/context';
 // Media
 export { MediaContainerElement } from './media/container-element';
 // Player
@@ -24,14 +74,17 @@ export * from './store/container-mixin';
 export * from './store/media-attach-mixin';
 export * from './store/provider-mixin';
 export * from './store/types';
-// UI Components
+export { AirPlayButtonElement } from './ui/airplay-button/airplay-button-element';
 export { AlertDialogCloseElement } from './ui/alert-dialog/alert-dialog-close-element';
 export { AlertDialogDescriptionElement } from './ui/alert-dialog/alert-dialog-description-element';
 export { AlertDialogElement } from './ui/alert-dialog/alert-dialog-element';
 export { AlertDialogTitleElement } from './ui/alert-dialog/alert-dialog-title-element';
 export { type AlertDialogContextValue, alertDialogContext } from './ui/alert-dialog/context';
+// UI Components
+export { AudioTrackRadioGroupElement } from './ui/audio-track-radio-group/audio-track-radio-group-element';
 export { BufferingIndicatorElement } from './ui/buffering-indicator/buffering-indicator-element';
 export { CaptionsButtonElement } from './ui/captions-button/captions-button-element';
+export { CaptionsRadioGroupElement } from './ui/captions-radio-group/captions-radio-group-element';
 export { CastButtonElement } from './ui/cast-button/cast-button-element';
 export { ContextPartElement, type PartContextValue } from './ui/context-part-element';
 export { ControlsElement } from './ui/controls/controls-element';
@@ -48,30 +101,29 @@ export * from './ui/media-element';
 export { MediaUIElement } from './ui/media-ui-element';
 export {
   type MenuContextValue,
+  type MenuGroupContextValue,
   type MenuRadioGroupContextValue,
   menuContext,
+  menuGroupContext,
   menuRadioGroupContext,
 } from './ui/menu/context';
-export { MenuBackElement } from './ui/menu/menu-back-element';
 export { MenuCheckboxItemElement } from './ui/menu/menu-checkbox-item-element';
 export { MenuElement } from './ui/menu/menu-element';
 export { MenuGroupElement } from './ui/menu/menu-group-element';
+export { MenuGroupLabelElement } from './ui/menu/menu-group-label-element';
 export { MenuItemElement } from './ui/menu/menu-item-element';
 export { MenuItemIndicatorElement } from './ui/menu/menu-item-indicator-element';
-export { MenuLabelElement } from './ui/menu/menu-label-element';
 export { MenuRadioGroupElement } from './ui/menu/menu-radio-group-element';
 export { MenuRadioItemElement } from './ui/menu/menu-radio-item-element';
 export { MenuSeparatorElement } from './ui/menu/menu-separator-element';
-export { MenuViewElement } from './ui/menu/menu-view-element';
 export { MuteButtonElement } from './ui/mute-button/mute-button-element';
 export { PiPButtonElement } from './ui/pip-button/pip-button-element';
 export { PlayButtonElement } from './ui/play-button/play-button-element';
 export { PlaybackRateButtonElement } from './ui/playback-rate-button/playback-rate-button-element';
-export { PlaybackRateMenuElement } from './ui/playback-rate-menu/playback-rate-menu-element';
-export { PlaybackRateMenuTriggerElement } from './ui/playback-rate-menu/playback-rate-menu-trigger-element';
-export { PlaybackRateOptionsElement } from './ui/playback-rate-menu/playback-rate-options-element';
+export { PlaybackRateRadioGroupElement } from './ui/playback-rate-radio-group/playback-rate-radio-group-element';
 export { PopoverElement } from './ui/popover/popover-element';
 export { PosterElement } from './ui/poster/poster-element';
+export { QualityRadioGroupElement } from './ui/quality-radio-group/quality-radio-group-element';
 export { SeekButtonElement } from './ui/seek-button/seek-button-element';
 export { SeekIndicatorElement } from './ui/seek-indicator/seek-indicator-element';
 export { SeekIndicatorValueElement } from './ui/seek-indicator/seek-indicator-value-element';
@@ -92,10 +144,14 @@ export { ThumbnailElement } from './ui/thumbnail/thumbnail-element';
 export { TimeElement } from './ui/time/time-element';
 export { TimeGroupElement } from './ui/time/time-group-element';
 export { TimeSeparatorElement } from './ui/time/time-separator-element';
+export { TimeSliderChapterTitleElement } from './ui/time-slider/time-slider-chapters/time-slider-chapter-title-element';
+export { TimeSliderChaptersElement } from './ui/time-slider/time-slider-chapters/time-slider-chapters-element';
 export { TimeSliderElement } from './ui/time-slider/time-slider-element';
 export { tooltipGroupContext } from './ui/tooltip/context';
 export { TooltipElement } from './ui/tooltip/tooltip-element';
 export { TooltipGroupElement } from './ui/tooltip/tooltip-group-element';
+export { TooltipLabelElement } from './ui/tooltip/tooltip-label-element';
+export { TooltipShortcutElement } from './ui/tooltip/tooltip-shortcut-element';
 export { VolumeIndicatorElement } from './ui/volume-indicator/volume-indicator-element';
 export { VolumeIndicatorFillElement } from './ui/volume-indicator/volume-indicator-fill-element';
 export { VolumeIndicatorValueElement } from './ui/volume-indicator/volume-indicator-value-element';

@@ -1,16 +1,32 @@
-/* ==========================================================================
-   Time Display
-   ========================================================================== */
-
 .media-default-skin .media-time-controls {
   display: flex;
   flex: 1;
-  gap: 0.75rem;
+  gap: calc(var(--spacing) * 2.5);
   align-items: center;
-  padding-inline: 0.5rem;
   container: media-time-controls / inline-size;
+
+  > .media-time:last-child {
+    @container media-time-controls (width < 16rem) {
+      display: none;
+    }
+  }
 }
 
 .media-default-skin .media-time {
   font-variant-numeric: tabular-nums;
+}
+
+.media-default-skin .media-time[role="button"] {
+  cursor: pointer;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  border-radius: calc(var(--spacing) * 1);
+  transition-timing-function: ease-out;
+  transition-duration: 100ms;
+  transition-property: outline-color, outline-offset;
+
+  &:focus-visible {
+    outline-color: var(--focus-ring-color);
+    outline-offset: 2px;
+  }
 }

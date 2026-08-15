@@ -1,5 +1,55 @@
 # Changelog
 
+## [10.0.0-beta.26](https://github.com/videojs/v10/compare/@videojs/utils@10.0.0-beta.25...@videojs/utils@10.0.0-beta.26) (2026-08-02)
+
+
+### Features
+
+* **core:** add status announcer state updates ([#1659](https://github.com/videojs/v10/issues/1659)) ([a5e7339](https://github.com/videojs/v10/commit/a5e73393fef381af7e148178822d5c3d94739834))
+* **i18n:** convert to opaque keys ([#1848](https://github.com/videojs/v10/issues/1848)) ([a3e673b](https://github.com/videojs/v10/commit/a3e673bd6854e006f4ae36e3ebfbfd6c6120e197))
+* **packages:** add flip functionality to popovers/tooltips/menus ([#1857](https://github.com/videojs/v10/issues/1857)) ([be89470](https://github.com/videojs/v10/commit/be89470447e84bb654cd17be7f4d4f6cec767e4f))
+* **packages:** add mux media with src parsing, structured source, and storyboards ([#1850](https://github.com/videojs/v10/issues/1850)) ([409e7ef](https://github.com/videojs/v10/commit/409e7ef225c7abb79a49c8b1adcc8c6ed0242cf6))
+* **packages:** i18n ([#1708](https://github.com/videojs/v10/issues/1708)) ([028dadb](https://github.com/videojs/v10/commit/028dadb385eb4f879f80932a4002676dc11d5300))
+* **skin:** improved responsive design ([#1832](https://github.com/videojs/v10/issues/1832)) ([c8a9eec](https://github.com/videojs/v10/commit/c8a9eecaf89139bd80965f39052c1483b910d6bc))
+
+
+### Bug Fixes
+
+* **sandbox:** Fix broken scripts on sandbox build ([#1824](https://github.com/videojs/v10/issues/1824)) ([20f118e](https://github.com/videojs/v10/commit/20f118e95c6b2ce434ad6f03135442b2e3239e6a))
+
+## [10.0.0-beta.25](https://github.com/videojs/v10/compare/@videojs/utils@10.0.0-beta.24...@videojs/utils@10.0.0-beta.25) (2026-07-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **media:** add Google Cast by default to HLS, DASH media ([#1661](https://github.com/videojs/v10/issues/1661))
+
+### Features
+
+* **core:** add i18n foundation with English locale and UI wiring ([#1589](https://github.com/videojs/v10/issues/1589)) ([768bf09](https://github.com/videojs/v10/commit/768bf09da07a728874da232c7cdefb653534e078))
+* **core:** add vimeo media host and html/react components ([#1667](https://github.com/videojs/v10/issues/1667)) ([1b31f3e](https://github.com/videojs/v10/commit/1b31f3e8d7ecef111b84dbd3f9053efc626f256d))
+* **core:** Support AirPlay on MSE ([#1692](https://github.com/videojs/v10/issues/1692)) ([3f2f4a4](https://github.com/videojs/v10/commit/3f2f4a4a5a8c41a22fa0dbefd46ed4e725dfa109))
+* **media:** add Google Cast by default to HLS, DASH media ([#1661](https://github.com/videojs/v10/issues/1661)) ([0ffe1a9](https://github.com/videojs/v10/commit/0ffe1a91979ddd53b8f5339765b8c086da7bcc1e))
+
+
+### Bug Fixes
+
+* **core:** disable toggle captions when there are no captions ([#1598](https://github.com/videojs/v10/issues/1598)) ([760870f](https://github.com/videojs/v10/commit/760870fdf28394021166df7f4ad575730dc65dbd))
+* **packages:** escape HTML special chars in serializeAttributes to prevent XSS ([#1670](https://github.com/videojs/v10/issues/1670)) ([accf4bf](https://github.com/videojs/v10/commit/accf4bfa34f89a8ed90bd005a414507ad1491f43))
+
+
+### Reverts
+
+* **core:** unmerge i18n stack base ([#1707](https://github.com/videojs/v10/issues/1707)) ([edfec1c](https://github.com/videojs/v10/commit/edfec1c93ef656c9b2ac105c9b1e1042d17cf956))
+
+## [10.0.0-beta.24](https://github.com/videojs/v10/compare/@videojs/utils@10.0.0-beta.23...@videojs/utils@10.0.0-beta.24) (2026-05-19)
+
+
+### Features
+
+* **packages:** add playback rate menu ([#1527](https://github.com/videojs/v10/issues/1527)) ([ad831d2](https://github.com/videojs/v10/commit/ad831d25f00187929e6eed93770422fa7003071c))
+* **spf:** HLS engine composition walkthrough + doc-driven cleanups ([#1512](https://github.com/videojs/v10/issues/1512)) ([0cfd3bb](https://github.com/videojs/v10/commit/0cfd3bb395332b19cf85e9dc7eb08f656bec3e2b))
+
 ## [10.0.0-beta.23](https://github.com/videojs/v10/compare/@videojs/utils@10.0.0-beta.22...@videojs/utils@10.0.0-beta.23) (2026-04-27)
 
 

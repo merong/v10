@@ -1,5 +1,10 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
   "html": {
     "experimentalFullSupportEnabled": false
   },
@@ -39,7 +44,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "style": {
         "noNamespace": "off",
         "noNonNullAssertion": "off"
@@ -61,6 +66,7 @@
       },
       "correctness": {
         "noUnknownProperty": {
+          "level": "error",
           "options": {
             "ignore": ["corner-shape"]
           }
@@ -90,6 +96,26 @@
     }
   },
   "overrides": [
+    {
+      "includes": [
+        "packages/{html,react}/src/__generated__/skins/**",
+        "packages/skins/canonical/registry/default/**",
+        "packages/skins/canonical/styles/base.css"
+      ],
+      "formatter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
+      },
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      }
+    },
     {
       "includes": ["site/src/**", "!site/src/utils/twMerge.ts"],
       "linter": {
@@ -141,6 +167,16 @@
           }
         }
       }
+    },
+    {
+      "includes": ["**/*.svg"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noSvgWithoutTitle": "off"
+          }
+        }
+      }
     }
   ],
   "files": {
@@ -159,6 +195,7 @@
       "!**/dist",
       "!**/examples",
       "!**/packages/ads/cdn",
+      "!site/scripts/api-docs-builder/src/tests/fixtures",
       "!**/packages/html/cdn",
       "!**/styles/vjs.css",
       "!**/packages/*/types"

@@ -1,23 +1,32 @@
 import type { MenuState, StateAttrMap } from '@videojs/core';
-import type { MenuApi, NavigationState } from '@videojs/core/dom';
+import type { MenuApi } from '@videojs/core/dom';
 import { createContext } from '@videojs/element/context';
 
 export interface MenuContextValue {
   menu: MenuApi;
   state: MenuState;
   stateAttrMap: StateAttrMap<MenuState>;
-  navigation: NavigationState;
-  /** The parent menu's API — set by nested submenus for pop-on-select behavior. */
-  parentMenu: MenuApi | null;
+  /** Publish generic display and interaction state to this submenu's trigger. */
+  setTriggerMetadata: (metadata: MenuTriggerMetadata) => void;
 }
 
-export interface MenuRadioGroupContextValue {
-  value: string;
-  onValueChange: (value: string) => void;
+export interface MenuTriggerMetadata {
+  hint: string;
+  disabled: boolean;
+  availability?: 'available' | 'unavailable' | 'unsupported' | undefined;
+}
+
+export interface MenuGroupContextValue {
+  registerLabel: (id: string) => () => void;
 }
 
 const MENU_CONTEXT_KEY = Symbol('@videojs/menu');
-const MENU_RADIO_GROUP_CONTEXT_KEY = Symbol('@videojs/menu-radio-group');
+const MENU_GROUP_CONTEXT_KEY = Symbol('@videojs/menu-group');
 
 export const menuContext = createContext<MenuContextValue>(MENU_CONTEXT_KEY);
-export const menuRadioGroupContext = createContext<MenuRadioGroupContextValue>(MENU_RADIO_GROUP_CONTEXT_KEY);
+export const menuGroupContext = createContext<MenuGroupContextValue>(MENU_GROUP_CONTEXT_KEY);
+
+export {
+  type RadioGroupContextValue as MenuRadioGroupContextValue,
+  radioGroupContext as menuRadioGroupContext,
+} from '../radio-group/context';

@@ -17,12 +17,13 @@
     "test:chromium": "playwright test --project=vite-chromium",
     "test:webkit": "playwright test --project=vite-webkit",
     "test:vite": "playwright test --project=vite-chromium",
+    "test:sandbox": "playwright test --project=sandbox-chromium",
     "test:all": "playwright test --project=vite-chromium --project=vite-webkit",
     "report": "playwright show-report"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@videojs/core": "workspace:*",
     "@videojs/html": "workspace:*",
@@ -32,9 +33,9 @@
     "@videojs/spf": "workspace:*",
     "@videojs/store": "workspace:*",
     "@videojs/utils": "workspace:*",
-    "@vitejs/plugin-react": "^6.0.1",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "vite": "^8.0.0"
+    "@vitejs/plugin-react": "^6.0.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "vite": "^8.1.5"
   }
 }

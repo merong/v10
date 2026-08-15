@@ -1,13 +1,13 @@
-import { type MediaControlsState, POPUP_HOST_ATTR } from '@videojs/core';
+import { POPUP_HOST_ATTR } from '@videojs/core';
 import type { AnyPlayerStore } from '@videojs/core/dom';
 import { ContextProvider } from '@videojs/element/context';
+import type { MediaControlsState } from '@videojs/media';
 import { createStore, flush } from '@videojs/store';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { playerContext } from '../../../player/context';
 import { MediaElement } from '../../media-element';
 import { MenuElement } from '../../menu/menu-element';
-import { PlaybackRateMenuElement } from '../../playback-rate-menu/playback-rate-menu-element';
 import { PopoverElement } from '../../popover/popover-element';
 import { TooltipElement } from '../../tooltip/tooltip-element';
 import { ControlsElement } from '../controls-element';
@@ -39,6 +39,7 @@ function createControlsStore(): AnyPlayerStore {
       return {
         userActive: true,
         controlsVisible: true,
+        requestControlsLock: () => () => {},
         toggleControls() {
           const visible = !(get().controlsVisible as boolean);
 
@@ -98,12 +99,24 @@ afterEach(() => {
 });
 
 describe('ControlsElement', () => {
-  it('closes owned popovers, menus, playback-rate menus, and tooltips when controls hide', async () => {
+  it('marks the controls surface as interactive', async () => {
+    const provider = document.createElement('test-controls-player-provider') as TestPlayerProviderElement;
+    const controls = createDefinedElement(ControlsElement);
+
+    document.body.append(provider);
+    provider.append(controls);
+
+    await controls.updateComplete;
+
+    expect(controls.hasAttribute('data-interactive')).toBe(true);
+  });
+
+  it('closes owned popovers, menus, and tooltips when controls hide', async () => {
     const provider = document.createElement('test-controls-player-provider') as TestPlayerProviderElement;
     const controls = createDefinedElement(ControlsElement);
     const popover = createDefinedElement(PopoverElement);
     const menu = createDefinedElement(MenuElement);
-    const playbackRateMenu = createDefinedElement(PlaybackRateMenuElement);
+    const playbackRateMenu = createDefinedElement(MenuElement);
     const tooltip = createDefinedElement(TooltipElement);
     const popoverClose = vi.spyOn(popover, 'close');
     const menuClose = vi.spyOn(menu, 'close');

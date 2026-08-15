@@ -62,6 +62,23 @@ export class PlayerPage {
     return this.page.locator(SELECTORS.playbackRateButton).first();
   }
 
+  get settingsButton(): Locator {
+    return this.page.locator(SELECTORS.settingsButton).first();
+  }
+
+  get settingsCaptionsItem(): Locator {
+    return this.page.locator(SELECTORS.settingsCaptionsItem).first();
+  }
+
+  get settingsSpeedItem(): Locator {
+    return this.page.locator(SELECTORS.settingsSpeedItem).first();
+  }
+
+  /** The scrollable panel of the menu view that is currently on screen. */
+  get activeMenuPanel(): Locator {
+    return this.page.locator(SELECTORS.activeMenuPanel).first();
+  }
+
   get poster(): Locator {
     return this.page.locator(SELECTORS.poster).first();
   }
@@ -86,6 +103,18 @@ export class PlayerPage {
     return this.page.locator(SELECTORS.thumbnail).first();
   }
 
+  get tooltip(): Locator {
+    return this.page.locator(SELECTORS.tooltip);
+  }
+
+  get playTooltip(): Locator {
+    return this.tooltip.filter({ hasText: 'Play' }).first();
+  }
+
+  get settingsTooltip(): Locator {
+    return this.tooltip.filter({ hasText: 'Settings' }).first();
+  }
+
   get popover(): Locator {
     return this.page.locator(SELECTORS.popover).first();
   }
@@ -108,9 +137,21 @@ export class PlayerPage {
   /** Wait for the player to load media and show controls. */
   async waitForMediaReady({ muted = true }: { muted?: boolean } = {}): Promise<void> {
     await this.playButton.waitFor({ state: 'attached', timeout: 20_000 });
+    await this.playerRoot.evaluate(async (root) => {
+      const elements = [root, ...root.querySelectorAll<HTMLElement>('*')].filter((element) =>
+        element.localName.includes('-')
+      );
+
+      await Promise.all(
+        [...new Set(elements.map((element) => element.localName))].map((name) => customElements.whenDefined(name))
+      );
+      await Promise.all(
+        elements.map((element) => (element as HTMLElement & { updateComplete?: Promise<unknown> }).updateComplete)
+      );
+    });
 
     // Wait for the media element to have at least metadata loaded.
-    // SPF-based renderers (simple-hls-video) with preload="metadata" need
+    // SPF-based renderers (hls-video) with preload="metadata" need
     // time to resolve the manifest before seeks or other interactions work.
     await this.page.waitForFunction(
       (selector) => {
@@ -140,6 +181,16 @@ export class PlayerPage {
     await expect(this.playButton).not.toHaveAttribute(DATA_ATTRS.paused, { timeout: 5_000 });
   }
 
+  /** Start the media without interacting with controls. */
+  async playMedia(): Promise<void> {
+    await this.page.evaluate(async (selector) => {
+      const media = document.querySelector(selector) as HTMLMediaElement | null;
+      const actual = (media?.querySelector?.('video') as HTMLMediaElement) ?? media;
+      await actual?.play();
+    }, SELECTORS.media);
+    await expect(this.playButton).not.toHaveAttribute(DATA_ATTRS.paused, { timeout: 5_000 });
+  }
+
   /** Click pause and wait for the paused attribute to appear. */
   async pause(): Promise<void> {
     // In Firefox headless (especially audio), controls may hide after play
@@ -147,6 +198,30 @@ export class PlayerPage {
     // Fall back to dispatching click via JS, then verify UI state.
     await this.playButton.dispatchEvent('click');
     await expect(this.playButton).toHaveAttribute(DATA_ATTRS.paused, '', { timeout: 5_000 });
+  }
+
+  async openPlaybackRateSettings(): Promise<void> {
+    await this.showControls();
+    await this.settingsButton.click();
+    await expect(this.settingsSpeedItem).toBeVisible();
+    await this.settingsSpeedItem.click();
+    await expect(this.page.locator(SELECTORS.activeMenuOptions).first()).toBeVisible();
+  }
+
+  async openCaptionsSettings(): Promise<void> {
+    await this.showControls();
+    await this.settingsButton.click();
+    await expect(this.settingsCaptionsItem).toBeVisible();
+    await this.settingsCaptionsItem.click();
+    await expect(this.page.locator(SELECTORS.activeMenuOptions).first()).toBeVisible();
+  }
+
+  async getPlaybackRate(): Promise<number> {
+    return this.page.evaluate((selector) => {
+      const media = document.querySelector(selector) as HTMLMediaElement | null;
+      const actual = (media?.querySelector?.('video') as HTMLMediaElement) ?? media;
+      return actual?.playbackRate ?? 1;
+    }, SELECTORS.media);
   }
 
   /** Click at a percentage position on the time slider. */
@@ -185,14 +260,36 @@ export class PlayerPage {
     await this.page.mouse.move(x, y);
   }
 
-  /** Hover over the player area to trigger user-active state and show controls. */
-  async showControls(): Promise<void> {
-    // Use the play button as anchor — it's always inside the player
-    const btn = this.playButton;
-    const box = await btn.boundingBox();
-    if (!box) throw new Error('Play button not visible — cannot show controls');
+  /**
+   * Opens the playback rate menu and selects the first option that differs from the current rate.
+   * Skins expose rate via a menu (not cycle-on-trigger).
+   */
+  async selectAlternativePlaybackRate(): Promise<void> {
+    const initialRate = await this.getPlaybackRate();
+    const usesSettingsMenu = (await this.settingsButton.count()) > 0;
 
-    await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await this.page.waitForTimeout(200);
+    if (usesSettingsMenu) {
+      await this.openPlaybackRateSettings();
+    } else {
+      await this.showControls();
+      await this.playbackRateButton.click();
+    }
+
+    const option = this.page
+      .locator(usesSettingsMenu ? SELECTORS.activeMenuUncheckedOptions : SELECTORS.playbackRateUncheckedOptions)
+      .first();
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    // Menu popovers can intercept pointer events on nested radio items.
+    await option.dispatchEvent('click');
+
+    await expect.poll(async () => this.getPlaybackRate()).not.toBe(initialRate);
+  }
+
+  /** Signal pointer activity to show controls and reset the idle timer. */
+  async showControls(): Promise<void> {
+    await this.playerRoot.dispatchEvent('pointermove', { pointerType: 'mouse' });
+    if ((await this.videoPlayer.count()) > 0) {
+      await expect(this.controls).toHaveAttribute(DATA_ATTRS.visible, '');
+    }
   }
 }

@@ -1,19 +1,13 @@
-import { createPlayer, MuteButton } from '@videojs/react';
+import { Container, createPlayer, MuteButton } from '@videojs/react';
 import { Video, videoFeatures } from '@videojs/react/video';
 
-const Player = createPlayer({ features: videoFeatures });
+const { Player } = createPlayer({ features: videoFeatures });
 
 export default function VolumeLevels() {
   return (
-    <Player.Provider>
-      <Player.Container className="media-container">
-        <Video
-          src="https://stream.mux.com/BV3YZtogl89mg9VcNBhhnHm02Y34zI1nlMuMQfAbl3dM/highest.mp4"
-          autoPlay
-          muted
-          playsInline
-          loop
-        />
+    <Player>
+      <Container className="media-container">
+        <Video src="{{VJS10_DEMO_VIDEO_MP4}}" autoPlay muted playsInline loop />
         <MuteButton
           className="media-mute-button"
           render={(props, state) => (
@@ -28,7 +22,7 @@ export default function VolumeLevels() {
             </button>
           )}
         />
-      </Player.Container>
-    </Player.Provider>
+      </Container>
+    </Player>
   );
 }

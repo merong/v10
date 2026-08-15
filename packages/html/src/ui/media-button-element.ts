@@ -5,13 +5,36 @@ import type {
   MediaButtonComponent,
   StateAttrMap,
 } from '@videojs/core';
-import { applyElementProps, applyStateDataAttrs, createButton, logMissingFeature } from '@videojs/core/dom';
+import {
+  applyElementProps,
+  applyStateDataAttrs,
+  createButton,
+  HOTKEY_SHORTCUT_CHANGE_EVENT,
+  logMissingFeature,
+  type UIEvent,
+} from '@videojs/core/dom';
+import { isText, resolveText, type Text, translateText } from '@videojs/core/i18n';
 import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
 import type { State } from '@videojs/store';
+import { isBoolean, isObject } from '@videojs/utils/predicate';
 
+import { i18nContext } from '../i18n/context';
+import { I18nController } from '../i18n/controller';
 import type { PlayerController } from '../player/player-controller';
 import { AriaKeyShortcutsController } from './hotkey/aria-key-shortcuts-controller';
 import { MediaElement } from './media-element';
+
+type LabelParams = Record<string, string | number>;
+type LabelParamsCore<Core extends MediaButtonComponent> = Core & {
+  getLabelParams?: (state: InferComponentState<Core>) => LabelParams | undefined;
+};
+
+function getLabelParams<Core extends MediaButtonComponent>(
+  core: Core,
+  state: InferComponentState<Core>
+): LabelParams | undefined {
+  return (core as LabelParamsCore<Core>).getLabelParams?.(state);
+}
 
 /** Abstract base for HTML custom elements that render a media-control button. */
 export abstract class MediaButtonElement<Core extends MediaButtonComponent> extends MediaElement {
@@ -21,16 +44,34 @@ export abstract class MediaButtonElement<Core extends MediaButtonComponent> exte
   };
 
   disabled = false;
-  label = '';
+  label: Text | string = '';
 
   protected abstract readonly core: Core;
   protected abstract readonly stateAttrMap: StateAttrMap<InferComponentState<Core>>;
   protected abstract readonly mediaState: PlayerController<any, InferMediaState<Core> | undefined>;
 
-  protected abstract activate(state: InferMediaState<Core>): void;
+  protected abstract activate(state: InferMediaState<Core>, event?: UIEvent): void | Promise<void>;
+
+  protected getIsButtonDisabled(): boolean {
+    return this.disabled || !this.mediaState.value;
+  }
+
+  protected handleActivate(event: UIEvent): void {
+    // `createButton` invokes `onActivate` synchronously from click/keyup
+    // handlers, so any rejection here would be unhandled. Log in dev for
+    // visibility but absorb the failure at this UI boundary.
+    Promise.resolve(this.activate(this.mediaState.value!, event)).catch((error) => {
+      if (__DEV__) console.error(`[${this.localName}]`, error);
+    });
+  }
 
   /** Override to set the hotkey action name for `aria-keyshortcuts`. */
   protected readonly hotkeyAction: string | undefined = undefined;
+
+  /** Override to match hotkeys that use action values, such as seek steps. */
+  protected get hotkeyValue(): number | undefined {
+    return undefined;
+  }
 
   get $state(): State<ButtonState> {
     return this.core.state;
@@ -38,20 +79,24 @@ export abstract class MediaButtonElement<Core extends MediaButtonComponent> exte
 
   #disconnect: AbortController | null = null;
   #hotkeyRegistry: AriaKeyShortcutsController | null = null;
+  #lastHotkeyShortcut: string | undefined;
+  readonly #i18n = new I18nController(this, i18nContext);
 
   override connectedCallback(): void {
     super.connectedCallback();
     if (this.destroyed) return;
 
     if (this.hotkeyAction && !this.#hotkeyRegistry) {
-      this.#hotkeyRegistry = new AriaKeyShortcutsController(this, this.hotkeyAction);
+      this.#hotkeyRegistry = new AriaKeyShortcutsController(this, this.hotkeyAction, {
+        value: () => this.hotkeyValue,
+      });
     }
 
     this.#disconnect = new AbortController();
 
     const buttonProps = createButton({
-      onActivate: () => this.activate(this.mediaState.value!),
-      isDisabled: () => this.disabled || !this.mediaState.value,
+      onActivate: (event) => this.handleActivate(event),
+      isDisabled: () => this.getIsButtonDisabled(),
     });
 
     applyElementProps(this, buttonProps, { signal: this.#disconnect.signal });
@@ -69,7 +114,20 @@ export abstract class MediaButtonElement<Core extends MediaButtonComponent> exte
 
   /** Returns the button's current label derived from media state. */
   getLabel(): string | undefined {
-    return this.core.state.current.label || undefined;
+    return this.core.state.current.label ? resolveText(this.core.state.current.label) : undefined;
+  }
+
+  getShortcut(): string | undefined {
+    return this.#hotkeyRegistry?.shortcut;
+  }
+
+  /** Resolved label for tooltips and other display surfaces. */
+  getResolvedLabel(): string | undefined {
+    const media = this.mediaState.value;
+    if (!media) return undefined;
+    this.core.setMedia(media);
+    const state = this.core.getState() as InferComponentState<Core>;
+    return translateText(this.core.getLabel(state), this.#i18n.value, getLabelParams(this.core, state));
   }
 
   protected override willUpdate(changed: PropertyValues): void {
@@ -82,14 +140,39 @@ export abstract class MediaButtonElement<Core extends MediaButtonComponent> exte
 
     const media = this.mediaState.value;
 
+    this.#syncHotkeyShortcut();
+
     if (!media) return;
 
     this.core.setMedia(media);
-    const state = this.core.getState();
+    const state = this.core.getState() as InferComponentState<Core>;
+    const attrs = (this.core.getAttrs?.(state) ?? {}) as Record<string, unknown>;
+    if (isText(attrs['aria-label'])) {
+      attrs['aria-label'] = translateText(attrs['aria-label'], this.#i18n.value, getLabelParams(this.core, state));
+    }
     applyElementProps(this, {
-      ...this.core.getAttrs?.(state),
-      'aria-keyshortcuts': this.#hotkeyRegistry?.value,
+      ...attrs,
+      'aria-keyshortcuts': this.#hotkeyRegistry?.aria,
+      // A button whose core reports itself hidden takes the real attribute, not
+      // just the data one: `data-hidden` is a styling hook a skin may or may not
+      // act on, where `hidden` removes the control the way the React components
+      // do by rendering nothing.
+      ...(isHideable(state) && { hidden: state.hidden ? '' : undefined }),
     });
     applyStateDataAttrs(this, state, this.stateAttrMap);
   }
+
+  #syncHotkeyShortcut(): void {
+    const shortcut = this.getShortcut();
+
+    if (shortcut === this.#lastHotkeyShortcut) return;
+
+    this.#lastHotkeyShortcut = shortcut;
+    this.dispatchEvent(new CustomEvent(HOTKEY_SHORTCUT_CHANGE_EVENT));
+  }
+}
+
+/** Whether a button's core reports whether it should be shown at all. */
+function isHideable(state: unknown): state is { hidden: boolean } {
+  return isObject(state) && isBoolean((state as { hidden?: unknown }).hidden);
 }

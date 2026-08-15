@@ -24,7 +24,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
-import type { PresetReference, PresetResult, PresetSkinDef } from './pipeline.js';
+import type { PresetFeatureRef, PresetReference, PresetSkinDef } from './types.js';
+import { getJSDocDescription } from './utils.js';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -38,6 +39,11 @@ interface PresetInfo {
     barrelPath: string;
     scanDir: string;
   };
+}
+
+export interface PresetResult {
+  name: string;
+  reference: PresetReference;
 }
 
 // ─── Package.json Discovery ─────────────────────────────────────────
@@ -307,6 +313,31 @@ function findReactMediaElement(filePath: string): string | undefined {
 
 // ─── Feature Bundle Resolution ──────────────────────────────────────
 
+/**
+ * Feature names whose kebab-cased form doesn't match the docs page slug.
+ * Example: `textTrack` → `feature-text-tracks.mdx`.
+ */
+const FEATURE_SLUG_OVERRIDES: Record<string, string> = {
+  textTrack: 'text-tracks',
+};
+
+function featureDocsSlug(featureName: string): string {
+  const override = FEATURE_SLUG_OVERRIDES[featureName];
+  if (override) return `reference/feature-${override}`;
+  const kebab = featureName.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+  return `reference/feature-${kebab}`;
+}
+
+function featureReferenceExists(monorepoRoot: string, slug: string): boolean {
+  const mdxPath = path.join(monorepoRoot, 'site/src/content/docs', `${slug}.mdx`);
+  return fs.existsSync(mdxPath);
+}
+
+function resolveFeatureRef(name: string, monorepoRoot: string): PresetFeatureRef {
+  const slug = featureDocsSlug(name);
+  return { name, slug, hasReference: featureReferenceExists(monorepoRoot, slug) };
+}
+
 function parseFeatureBundles(presetsFilePath: string): Map<string, string[]> {
   const map = new Map<string, string[]>();
   if (!fs.existsSync(presetsFilePath)) return map;
@@ -350,12 +381,7 @@ function extractFileDescription(filePath: string): string | undefined {
   const firstStatement = sourceFile.statements[0];
   if (!firstStatement) return undefined;
 
-  const jsDocNodes = (firstStatement as { jsDoc?: ts.JSDoc[] }).jsDoc;
-  if (!jsDocNodes || jsDocNodes.length === 0) return undefined;
-
-  const doc = jsDocNodes[0]!;
-  if (typeof doc.comment === 'string') return doc.comment;
-  return undefined;
+  return getJSDocDescription(firstStatement);
 }
 
 // ─── Directory Scanning ─────────────────────────────────────────────
@@ -384,7 +410,7 @@ function scanHtmlDirectory(scanDir: string): { skins: PresetSkinDef[]; mediaElem
   return { skins, mediaElement };
 }
 
-function scanReactDirectory(scanDir: string, barrelPath: string): PresetSkinDef[] {
+function scanReactDirectory(scanDir: string, barrelPath: string, presetName: string): PresetSkinDef[] {
   const skins: PresetSkinDef[] = [];
 
   if (!fs.existsSync(scanDir)) return skins;
@@ -397,11 +423,16 @@ function scanReactDirectory(scanDir: string, barrelPath: string): PresetSkinDef[
   for (const file of files) {
     const filePath = path.join(scanDir, file);
     const exports = extractValueExports(filePath);
+    const basename = path.basename(file, path.extname(file));
+    const cssFile = path.join(scanDir, `${basename}.css`);
+    const cssImport = fs.existsSync(cssFile) ? `@videojs/react/${presetName}/${basename}.css` : undefined;
 
     for (const name of exports) {
       if (isFeatureBundle(name)) continue;
       if (isReactSkin(name)) {
-        skins.push({ name });
+        const skin: PresetSkinDef = { name };
+        if (cssImport) skin.cssImport = cssImport;
+        skins.push(skin);
       }
     }
   }
@@ -411,7 +442,11 @@ function scanReactDirectory(scanDir: string, barrelPath: string): PresetSkinDef[
 
 // ─── Preset Reference Building ──────────────────────────────────────
 
-function buildPresetReference(preset: PresetInfo, featureBundleMap: Map<string, string[]>): PresetResult | null {
+function buildPresetReference(
+  preset: PresetInfo,
+  featureBundleMap: Map<string, string[]>,
+  monorepoRoot: string
+): PresetResult | null {
   // Find feature bundle name from barrel files (try both frameworks)
   const bundleName =
     (preset.html && findFeatureBundleExport(preset.html.barrelPath)) ??
@@ -419,14 +454,15 @@ function buildPresetReference(preset: PresetInfo, featureBundleMap: Map<string, 
 
   if (!bundleName) return null;
 
-  const features = featureBundleMap.get(bundleName) ?? [];
+  const featureNames = featureBundleMap.get(bundleName) ?? [];
+  const features = featureNames.map((name) => resolveFeatureRef(name, monorepoRoot));
 
   // Scan HTML directory
   const htmlResult = preset.html ? scanHtmlDirectory(preset.html.scanDir) : { skins: [] as PresetSkinDef[] };
 
   // Scan React directory for skins, read barrel for media element
   const reactSkins = preset.react
-    ? scanReactDirectory(preset.react.scanDir, preset.react.barrelPath)
+    ? scanReactDirectory(preset.react.scanDir, preset.react.barrelPath, preset.name)
     : ([] as PresetSkinDef[]);
   const reactMediaElement = preset.react ? findReactMediaElement(preset.react.barrelPath) : undefined;
 
@@ -460,7 +496,7 @@ export function generatePresetReferences(monorepoRoot: string): PresetResult[] {
 
   const results: PresetResult[] = [];
   for (const preset of presets) {
-    const result = buildPresetReference(preset, featureBundleMap);
+    const result = buildPresetReference(preset, featureBundleMap, monorepoRoot);
     if (result) results.push(result);
   }
 

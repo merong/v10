@@ -1,93 +1,104 @@
-import { defineBehavior } from '../../../core/composition/create-composition';
+/**
+ * **Own the TextTracks actor pair for the current `mediaElement`.** When a
+ * `mediaElement` is in scope, creates the `TextTracksActor` (bound to the
+ * element's `textTracks`) and the `TextTrackSegmentLoaderActor` (bound to
+ * that actor + the injected cue resolver), and publishes both on
+ * `context`. On element identity change or behavior destroy, destroys both
+ * actors and clears the slots.
+ *
+ * Single-resource synchronous create/destroy driven by one signal — the
+ * simple-effect form is the right shape (per `behaviors.md` → "Where both
+ * shapes are legitimate": criterion 4b applies; sole writer of
+ * `textTracksActor` / `textTrackSegmentLoaderActor`, the effect's cleanup
+ * return handles destroy + slot clear structurally).
+ *
+ * Pairs with the `loadTextTrackSegments` behavior (a per-type variant of
+ * `setupSegmentLoading` in `load-segments.ts`), which only reads
+ * `textTrackSegmentLoaderActor`. The cue resolver is injected via
+ * `config` so this behavior owns the DOM-bound part of the text-track
+ * pipeline.
+ */
+import type { AnySlotMap, Behavior } from '../../../core/composition/create-composition';
 import { effect } from '../../../core/signals/effect';
-import { computed, type ReadonlySignal, type Signal } from '../../../core/signals/primitives';
+import type { ReadonlySignal, Signal } from '../../../core/signals/primitives';
 import { createTextTracksActor } from '../../actors/dom/text-tracks';
 import {
   createTextTrackSegmentLoaderActor,
   type TextTrackSegmentLoaderActor,
-  type TextTrackSegmentResolver,
+  type TextTrackSegmentLoaderActorConfig,
 } from '../../actors/text-track-segment-loader';
 import type { TextTracksActor } from '../../actors/text-tracks';
+import type { TextMessagePipelines, TextTrackSegmentResolver } from '../../primitives/text-segment-load-pipeline';
 
-/**
- * Context shape for text-track actors setup.
- *
- * Mirrors the shape `loadTextTrackCues` expects, but with `mediaElement`
- * typed as `HTMLMediaElement` (the concrete input the DOM factory needs)
- * and the actors parameterized over `VTTCue` (what the DOM factory produces).
- */
 export interface TextTrackActorsContext {
   mediaElement?: HTMLMediaElement | undefined;
   textTracksActor?: TextTracksActor<VTTCue> | undefined;
-  segmentLoaderActor?: TextTrackSegmentLoaderActor | undefined;
+  textTrackSegmentLoaderActor?: TextTrackSegmentLoaderActor | undefined;
 }
 
-/**
- * Config for text-track actors setup.
- *
- * The cue parser is the only piece that genuinely needs the host's
- * capabilities; injecting it via config means this behavior binds only
- * `createTextTracksActor` internally (which needs the `HTMLMediaElement`
- * argument) and relies on the composition assembler to supply the parser.
- */
-export interface TextTrackActorsConfig {
+export interface TextTrackActorsConfig extends Pick<TextTrackSegmentLoaderActorConfig<VTTCue>, 'forwardBuffer'> {
   resolveTextTrackSegment: TextTrackSegmentResolver<VTTCue>;
+  /**
+   * Ordered text step pipeline, mapped to the loader's `messagePipelines`. Named
+   * with the `text` domain prefix to mirror the v/a `video`/`audioMessagePipelines`
+   * composition-config slots. Defaults (in the loader) to `resolveCues → dispatchCues`.
+   */
+  textMessagePipelines?: TextMessagePipelines<VTTCue>;
 }
 
-/**
- * Setup text-track actors orchestration.
- *
- * Creates the `TextTracksActor` (bound to the element's `textTracks`) and
- * the `TextTrackSegmentLoaderActor` (bound to the supplied cue parser)
- * whenever a media element is available; the effect's cleanup destroys them
- * on change or unmount.
- *
- * Subscribes to a `computed` projection of `mediaElement` rather than the
- * full context signal, so writing the actor slots back to `context` from
- * inside the effect does not re-trigger it.
- *
- * Pairs with the host-agnostic `loadTextTrackCues` behavior in
- * `behaviors/`: this setup manages actor lifecycle, the loader
- * orchestrates state transitions and dispatches load messages.
- *
- * @example
- * createComposition([setupTextTrackActors, loadTextTrackCues, ...], {
- *   config: { resolveTextTrackSegment: resolveVttSegment },
- * });
- */
 function setupTextTrackActorsSetup({
+  state,
   context,
   config,
 }: {
+  // Forwarded opaquely into the loader's steps (relocation reads composition state);
+  // this behavior owns no state of its own (stateKeys: []).
+  state: AnySlotMap;
   context: {
     mediaElement: ReadonlySignal<TextTrackActorsContext['mediaElement']>;
     textTracksActor: Signal<TextTrackActorsContext['textTracksActor']>;
-    segmentLoaderActor: Signal<TextTrackActorsContext['segmentLoaderActor']>;
+    textTrackSegmentLoaderActor: Signal<TextTrackActorsContext['textTrackSegmentLoaderActor']>;
   };
   config: TextTrackActorsConfig;
 }): () => void {
-  const mediaElementSignal = computed(() => context.mediaElement.get());
-
   return effect(() => {
-    const mediaElement = mediaElementSignal.get();
+    const mediaElement = context.mediaElement.get();
     if (!mediaElement) return;
 
     const textTracksActor = createTextTracksActor(mediaElement);
-    const segmentLoaderActor = createTextTrackSegmentLoaderActor(textTracksActor, config.resolveTextTrackSegment);
+    const textTrackSegmentLoaderActor = createTextTrackSegmentLoaderActor(
+      textTracksActor,
+      config.resolveTextTrackSegment,
+      { forwardBuffer: config.forwardBuffer, messagePipelines: config.textMessagePipelines },
+      // Composition deps forwarded into each step (relocation reads the primary A/V origin).
+      { state, context, config }
+    );
     context.textTracksActor.set(textTracksActor);
-    context.segmentLoaderActor.set(segmentLoaderActor);
+    context.textTrackSegmentLoaderActor.set(textTrackSegmentLoaderActor);
 
     return () => {
       textTracksActor.destroy();
-      segmentLoaderActor.destroy();
+      textTrackSegmentLoaderActor.destroy();
       context.textTracksActor.set(undefined);
-      context.segmentLoaderActor.set(undefined);
+      context.textTrackSegmentLoaderActor.set(undefined);
     };
   });
 }
 
-export const setupTextTrackActors = defineBehavior({
+// Manual `Behavior` literal (like `end-of-stream`): no state of its own
+// (`stateKeys: []`), but the setup forwards the composition `state` to the resolver
+// opaquely. A literal (not `defineBehavior`) so `stateKeys: []` can coexist with a
+// setup that reads `state`.
+export const setupTextTrackActors: Behavior<
+  Record<never, never>,
+  {
+    mediaElement: ReadonlySignal<TextTrackActorsContext['mediaElement']>;
+    textTracksActor: Signal<TextTrackActorsContext['textTracksActor']>;
+    textTrackSegmentLoaderActor: Signal<TextTrackActorsContext['textTrackSegmentLoaderActor']>;
+  },
+  TextTrackActorsConfig
+> = {
   stateKeys: [],
-  contextKeys: ['mediaElement', 'textTracksActor', 'segmentLoaderActor'],
+  contextKeys: ['mediaElement', 'textTracksActor', 'textTrackSegmentLoaderActor'],
   setup: setupTextTrackActorsSetup,
-});
+};

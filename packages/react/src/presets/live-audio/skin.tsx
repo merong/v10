@@ -1,7 +1,9 @@
 import { cn } from '@videojs/utils/style';
 import { type ComponentProps, forwardRef, type ReactNode } from 'react';
-import { PauseIcon, PlayIcon, RestartIcon, VolumeHighIcon, VolumeLowIcon, VolumeOffIcon } from '@/icons';
-import { Container, usePlayer } from '@/player/context';
+import { PauseIcon, PlayIcon, RestartIcon, SpinnerIcon, VolumeHighIcon, VolumeLowIcon, VolumeOffIcon } from '@/icons';
+import { Container } from '@/player/container';
+import { usePlayer } from '@/player/context';
+import { BufferingIndicator } from '@/ui/buffering-indicator';
 import { ErrorDialog } from '@/ui/error-dialog';
 import { Hotkey } from '@/ui/hotkey';
 import { LiveButton } from '@/ui/live-button';
@@ -27,7 +29,7 @@ const Button = forwardRef<HTMLButtonElement, ComponentProps<'button'>>(function 
 });
 
 function VolumePopover(): ReactNode {
-  const volumeUnsupported = usePlayer((s) => s.volumeAvailability === 'unsupported');
+  const volumeUnavailable = usePlayer((s) => s.volumeAvailability !== 'available');
 
   const muteButton = (
     <MuteButton className="media-button--mute" render={<Button />}>
@@ -37,7 +39,7 @@ function VolumePopover(): ReactNode {
     </MuteButton>
   );
 
-  if (volumeUnsupported) return muteButton;
+  if (volumeUnavailable) return muteButton;
 
   return (
     <Popover.Root openOnHover delay={200} closeDelay={100} side="top" boundary="viewport">
@@ -51,6 +53,15 @@ function VolumePopover(): ReactNode {
         </VolumeSlider.Root>
       </Popover.Popup>
     </Popover.Root>
+  );
+}
+
+export function TooltipPopup(props: Omit<Tooltip.PopupProps, 'children' | 'className'>): ReactNode {
+  return (
+    <Tooltip.Popup className="media-surface media-tooltip" {...props}>
+      <Tooltip.Label />
+      <Tooltip.Shortcut className="media-tooltip__kbd" />
+    </Tooltip.Popup>
   );
 }
 
@@ -71,11 +82,11 @@ export function LiveAudioSkin(props: LiveAudioSkinProps): ReactNode {
         <ErrorDialog.Popup className="media-error">
           <div className="media-error__dialog">
             <div className="media-error__content">
-              <ErrorDialog.Title className="media-error__title">Something went wrong.</ErrorDialog.Title>
+              <ErrorDialog.Title className="media-error__title"></ErrorDialog.Title>
               <ErrorDialog.Description className="media-error__description" />
             </div>
             <div className="media-error__actions">
-              <ErrorDialog.Close className="media-button media-button--subtle">OK</ErrorDialog.Close>
+              <ErrorDialog.Close className="media-button media-button--subtle"></ErrorDialog.Close>
             </div>
           </div>
         </ErrorDialog.Popup>
@@ -84,18 +95,27 @@ export function LiveAudioSkin(props: LiveAudioSkinProps): ReactNode {
       <div className="media-surface media-controls">
         <Tooltip.Provider>
           <div className="media-button-group">
-            <Tooltip.Root side="top" boundary="viewport">
-              <Tooltip.Trigger
-                render={
-                  <PlayButton className="media-button--play" render={<Button />}>
-                    <RestartIcon className="media-icon media-icon--restart" />
-                    <PlayIcon className="media-icon media-icon--play" />
-                    <PauseIcon className="media-icon media-icon--pause" />
-                  </PlayButton>
-                }
+            <span className="media-button--play__wrapper">
+              <BufferingIndicator
+                render={(props) => (
+                  <div {...props} className="media-buffering-indicator">
+                    <SpinnerIcon className="media-icon" />
+                  </div>
+                )}
               />
-              <Tooltip.Popup className="media-surface media-tooltip" />
-            </Tooltip.Root>
+              <Tooltip.Root side="top" boundary="viewport">
+                <Tooltip.Trigger
+                  render={
+                    <PlayButton className="media-button--play" render={<Button />}>
+                      <RestartIcon className="media-icon media-icon--restart" />
+                      <PlayIcon className="media-icon media-icon--play" />
+                      <PauseIcon className="media-icon media-icon--pause" />
+                    </PlayButton>
+                  }
+                />
+                <TooltipPopup />
+              </Tooltip.Root>
+            </span>
 
             <LiveButton className="media-button media-button--subtle media-button--live" />
           </div>
@@ -116,7 +136,7 @@ export function LiveAudioSkin(props: LiveAudioSkinProps): ReactNode {
       <Hotkey keys="ArrowDown" action="volumeStep" value={-0.05} />
 
       {/* Input Feedback */}
-      <StatusAnnouncer />
+      <StatusAnnouncer className="media-sr-only" />
     </Container>
   );
 }

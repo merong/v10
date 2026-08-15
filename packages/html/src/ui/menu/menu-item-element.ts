@@ -1,9 +1,8 @@
-import { applyElementProps, applyStateDataAttrs, completeMenuItemSelection } from '@videojs/core/dom';
+import { applyElementProps, completeMenuItemSelection } from '@videojs/core/dom';
 import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
 import { ContextConsumer } from '@videojs/element/context';
-
 import { MediaElement } from '../media-element';
-import { menuContext } from './context';
+import { type MenuContextValue, menuContext } from './context';
 
 export class MenuItemElement extends MediaElement {
   static readonly tagName = 'media-menu-item';
@@ -16,26 +15,24 @@ export class MenuItemElement extends MediaElement {
   disabled = false;
   /** ID of a nested `<media-menu>` to open when this item is activated. */
   commandfor: string | undefined = undefined;
-
   readonly #ctx = new ContextConsumer(this, { context: menuContext, subscribe: true });
 
   #disconnect: AbortController | null = null;
-  #registered = false;
+  #registeredMenu: MenuContextValue['menu'] | null = null;
   #cleanupRegistration: (() => void) | null = null;
 
   override connectedCallback(): void {
     super.connectedCallback();
     this.#disconnect = new AbortController();
-    this.#registered = false;
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     this.#cleanupRegistration?.();
     this.#cleanupRegistration = null;
+    this.#registeredMenu = null;
     this.#disconnect?.abort();
     this.#disconnect = null;
-    this.#registered = false;
   }
 
   protected override update(_changed: PropertyValues): void {
@@ -44,9 +41,9 @@ export class MenuItemElement extends MediaElement {
     const ctx = this.#ctx.value;
     if (!ctx || !this.#disconnect) return;
 
-    if (!this.#registered) {
-      this.#registered = true;
-
+    if (this.#registeredMenu !== ctx.menu) {
+      this.#cleanupRegistration?.();
+      this.#registeredMenu = ctx.menu;
       this.#cleanupRegistration = ctx.menu.registerItem(this);
 
       applyElementProps(
@@ -54,32 +51,34 @@ export class MenuItemElement extends MediaElement {
         {
           onClick: (event: MouseEvent) => {
             const currentCtx = this.#ctx.value;
-            if (!currentCtx || this.disabled) return;
+            if (!currentCtx || this.#isDisabled()) return;
 
             const target = this.commandfor;
             if (target) {
-              // Push the linked submenu — use this element's id as triggerId
-              // (ensure the element has an id for focus restoration).
-              currentCtx.menu.push(target, this.id);
+              this.#openSubmenu(target);
             } else {
-              this.dispatchEvent(new CustomEvent('select', { bubbles: true }));
-              completeMenuItemSelection(currentCtx.menu, currentCtx.parentMenu);
+              const select = new CustomEvent('select', { bubbles: true, cancelable: true });
+              if (!this.dispatchEvent(select)) {
+                event.preventDefault();
+                return;
+              }
+              completeMenuItemSelection(currentCtx.menu);
             }
             event.preventDefault();
           },
           onKeyDown: (event: KeyboardEvent) => {
             const currentCtx = this.#ctx.value;
-            if (!currentCtx || this.disabled || event.key !== 'ArrowRight') return;
+            if (!currentCtx || this.#isDisabled() || event.key !== 'ArrowRight') return;
 
             const target = this.commandfor;
             if (!target) return;
 
-            currentCtx.menu.push(target, this.id);
+            this.#openSubmenu(target);
             event.preventDefault();
           },
           onPointerenter: () => {
             const currentCtx = this.#ctx.value;
-            if (!this.disabled) currentCtx?.menu.highlight(this, { focus: false });
+            if (!this.#isDisabled()) currentCtx?.menu.highlight(this, { focus: false });
           },
         },
         { signal: this.#disconnect.signal }
@@ -87,20 +86,26 @@ export class MenuItemElement extends MediaElement {
     }
 
     const hasSubmenu = Boolean(this.commandfor);
-    const topEntry = ctx.navigation.stack[ctx.navigation.stack.length - 1];
-    const activeSubMenuId = topEntry?.menuId ?? null;
-    const isExpanded = hasSubmenu ? activeSubMenuId === this.commandfor : undefined;
-
     applyElementProps(this, {
       role: 'menuitem',
-      'aria-disabled': this.disabled ? 'true' : undefined,
+      'aria-disabled': this.#isDisabled() ? 'true' : undefined,
       ...(hasSubmenu && {
         'aria-haspopup': 'menu',
-        'aria-expanded': isExpanded ? 'true' : 'false',
+        'aria-expanded': 'false',
         'data-has-submenu': '',
       }),
     });
+  }
 
-    applyStateDataAttrs(this, ctx.state, ctx.stateAttrMap);
+  #openSubmenu(id: string): void {
+    const root = this.getRootNode() as Document | ShadowRoot;
+    const submenu = root.querySelector<HTMLElement>(`#${CSS.escape(id)}`) as HTMLElement & {
+      openMenu?: (reason?: 'click') => void;
+    };
+    submenu?.openMenu?.('click');
+  }
+
+  #isDisabled(): boolean {
+    return this.disabled || this.getAttribute('aria-disabled') === 'true';
   }
 }

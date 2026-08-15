@@ -1,5 +1,5 @@
-import type { Media } from '@videojs/core/dom';
 import { ContextEvent } from '@videojs/element/context';
+import type { Media } from '@videojs/media/dom';
 import type { CustomElement } from '@videojs/utils/dom';
 import type { AnyConstructor, Constructor } from '@videojs/utils/types';
 import { type MediaContext, mediaContext } from '../player/context';
@@ -45,11 +45,15 @@ export function createMediaAttachMixin(context: MediaContext): MediaAttachMixin 
       }
 
       override disconnectedCallback() {
-        super.disconnectedCallback?.();
+        // Detach the store while the media chain is still live so features
+        // (e.g. remote-playback) can clean up against the real underlying
+        // element. Destroying the media host first would null the layer
+        // chain's target before listeners get a chance to unwind.
         this.#setMedia?.(null);
         this.#unsubscribe?.();
         this.#unsubscribe = null;
         this.#setMedia = null;
+        super.disconnectedCallback?.();
       }
     }
 

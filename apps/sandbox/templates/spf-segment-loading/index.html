@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <title>Sandbox — SPF Segment Loading POC</title>
     <style>
       body {
@@ -25,13 +26,26 @@
       /* ── Src controls ── */
       #src-controls {
         display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+        max-width: 620px;
+        margin-bottom: 10px;
+      }
+      #src-preset {
+        padding: 6px 10px;
+        font-family: monospace;
+        font-size: 12px;
+        border: 1px solid #999;
+        border-radius: 4px;
+      }
+      #src-input-row {
+        display: flex;
         gap: 8px;
         align-items: center;
-        margin-bottom: 10px;
       }
       #src-input {
         flex: 1;
-        max-width: 540px;
         padding: 6px 10px;
         font-family: monospace;
         font-size: 12px;
@@ -106,9 +120,17 @@
       }
       #throughput-display.has-data { color: #16a34a; }
       #throughput-display.warming { color: #d97706; }
+      #live-status {
+        margin-bottom: 12px;
+        font-family: monospace;
+        font-size: 12px;
+        color: #555;
+      }
+      #live-status.is-live { font-weight: bold; color: #dc2626; }
 
-      /* ── Rendition / resolution panels ── */
+      /* ── Rendition / resolution / audio panels ── */
       #rendition-picker,
+      #audio-track-picker,
       #resolution-status {
         padding: 12px 15px;
         margin: 16px 0;
@@ -117,7 +139,30 @@
         border: 1px solid #ddd;
         border-radius: 4px;
       }
-      #rendition-picker h2, #resolution-status h2 { margin-top: 0; font-size: 14px; }
+      #rendition-picker h2, #audio-track-picker h2, #text-track-picker h2, #resolution-status h2 { margin-top: 0; font-size: 14px; }
+
+      #audio-track-buttons, #text-track-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+      .audio-track-btn {
+        padding: 6px 12px;
+        font-family: monospace;
+        font-size: 11px;
+        cursor: pointer;
+        background: #fff;
+        border: 2px solid #999;
+        border-radius: 4px;
+      }
+      .audio-track-btn:hover { background: #eee; border-color: #555; }
+      .audio-track-btn.selected-default { font-weight: bold; background: #e6f0ff; border-color: #0070f3; }
+      .audio-track-btn.selected-pinned  { font-weight: bold; background: #fef3c7; border-color: #d97706; }
+
+      .audio-status { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+      .mode-default { font-weight: bold; color: #0070f3; }
+      .mode-pinned  { font-weight: bold; color: #d97706; }
+      .clear-filter-btn {
+        padding: 4px 10px; font-size: 11px; color: #d97706; cursor: pointer; background: #fef3c7;
+        border: 1px solid #d97706; border-radius: 4px;
+      }
+      .clear-filter-btn:hover { background: #fde68a; }
 
       #rendition-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
       .rendition-btn {
@@ -183,13 +228,19 @@
     <p>Testing segment loading pipeline with real Mux HLS stream</p>
 
     <div id="src-controls">
-      <input type="text" id="src-input" placeholder="Stream URL…" />
-      <button type="button" id="set-src">Set Src</button>
+      <select id="src-preset" title="Load a preset source">
+        <option value="">— preset sources —</option>
+      </select>
+      <div id="src-input-row">
+        <input type="text" id="src-input" placeholder="Stream URL…" />
+        <button type="button" id="set-src">Set Src</button>
+      </div>
     </div>
 
     <div id="playback-config">
       <label><input type="checkbox" id="muted-toggle" /> Muted</label>
       <label><input type="checkbox" id="autoplay-toggle" /> Autoplay</label>
+      <label><input type="checkbox" id="loop-toggle" /> Loop</label>
       <label>
         Preload:
         <select id="preload-select">
@@ -198,16 +249,23 @@
           <option value="auto">auto</option>
         </select>
       </label>
+      <label
+        title="Filter out HEVC renditions so ABR stays within one codec family, avoiding SourceBuffer.changeType() (not yet implemented). Needed for mixed-codec sources like the Apple bipbop example."
+      >
+        <input type="checkbox" id="avc-only-toggle" /> AVC-only (avoid changeType)
+      </label>
     </div>
 
     <div id="share-url-section">
-      🔗 <a id="share-link" href="#" target="_blank" rel="noopener">current page</a>
+      🔗 <a id="share-link" href="./" target="_blank" rel="noopener">current page</a>
       <button type="button" id="open-new-tab">Open in new tab ↗</button>
     </div>
 
     <div id="controls">
       <button type="button" id="play">Play</button>
       <button type="button" id="pause">Pause</button>
+      <button type="button" id="seek-to-edge" title="Seek to the live edge (window end − HOLD-BACK)">Seek to Live Edge</button>
+      <button type="button" id="seek-behind-window" title="Seek 30s behind the window start — exercises the window-exit rescue">Seek Out of Window</button>
       <button type="button" id="inspect">Inspect State</button>
       <button type="button" id="clearLogs">Clear Logs</button>
     </div>
@@ -216,10 +274,21 @@
     <video id="video" controls preload="none"></video>
     <div id="now-playing-quality"></div>
     <div id="throughput-display"></div>
+    <div id="live-status"></div>
 
     <div id="rendition-picker">
       <h2>Video Renditions</h2>
       <div id="rendition-buttons">Waiting for presentation…</div>
+    </div>
+
+    <div id="audio-track-picker">
+      <h2>Audio Tracks</h2>
+      <div id="audio-track-buttons">Waiting for presentation…</div>
+    </div>
+
+    <div id="text-track-picker">
+      <h2>Subtitles / Captions</h2>
+      <div id="text-track-buttons">Waiting for presentation…</div>
     </div>
 
     <div id="resolution-status">

@@ -9,7 +9,7 @@ export type PopoverSide = 'top' | 'bottom' | 'left' | 'right';
 export type PopoverAlign = 'start' | 'center' | 'end';
 
 export interface PopoverProps {
-  /** Which side of the trigger the popup appears on. */
+  /** Preferred side of the trigger for the popup. */
   side?: PopoverSide | undefined;
   /** Alignment of the popup along the trigger's edge. */
   align?: PopoverAlign | undefined;
@@ -45,6 +45,7 @@ export interface PopoverInput extends TransitionState {}
 export interface PopoverState extends TransitionFlags {
   open: boolean;
   status: TransitionStatus;
+  /** Preferred side of the trigger for the popup. */
   side: PopoverSide;
   align: PopoverAlign;
   modal: boolean | 'trap-focus';
@@ -94,7 +95,7 @@ export class PopoverCore {
 
   getTriggerAttrs(state: PopoverState, popupId?: string) {
     return {
-      'aria-expanded': state.open ? 'true' : 'false',
+      'aria-expanded': state.open && state.status !== 'ending' ? 'true' : 'false',
       'aria-haspopup': 'dialog',
       'aria-controls': popupId,
     };

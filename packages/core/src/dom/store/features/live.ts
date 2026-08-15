@@ -1,13 +1,12 @@
+import type { MediaLiveState } from '@videojs/media';
+import { isMediaLiveCapable } from '@videojs/media';
 import { listen } from '@videojs/utils/dom';
-
-import type { MediaLiveState } from '../../../core/media/state';
 import { definePlayerFeature } from '../../feature';
-import { isMediaLiveCapable } from '../../media/predicate';
 
 /**
  * Player feature exposing `liveEdgeStart` and `targetLiveWindow` in store
  * state for media that implements `MediaLiveCapability` (currently
- * `HlsMedia` and its delegates).
+ * `HlsJsMedia` and its delegates).
  *
  * - `liveEdgeStart` — presentation time marking the start of the Live Edge
  *   Window. Playing at the live edge when `currentTime >= liveEdgeStart`.

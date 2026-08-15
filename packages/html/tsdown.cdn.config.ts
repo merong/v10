@@ -1,10 +1,12 @@
-import { readdirSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { globSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { UserConfig } from 'tsdown';
 import { defineConfig } from 'tsdown';
+import { cdnI18nExternalPlugin } from '../../build/plugins/cdn-i18n-external-plugin.ts';
 import { inlineCssPlugin } from '../../build/plugins/inline-css-plugin.ts';
 import { inlineTemplatePlugin } from '../../build/plugins/inline-template-plugin.ts';
+import { baseConfig } from '../../build/tsdown.ts';
 
 type BuildMode = 'dev' | 'prod';
 
@@ -14,22 +16,77 @@ const buildModes: BuildMode[] = ['dev', 'prod'];
 
 const presets = [
   'video',
+  'video-headless',
   'video-minimal',
   'video-ui',
   'video-minimal-ui',
   'live-video',
   'live-video-minimal',
   'audio',
+  'audio-headless',
   'audio-minimal',
   'audio-ui',
   'audio-minimal-ui',
   'background',
 ];
-const media = ['hls-video', 'mux-audio', 'mux-video', 'native-hls-video', 'simple-hls-video', 'dash-video'];
+const media = [
+  'google-cast',
+  'hls-audio',
+  'hls-background-video',
+  'hls-video',
+  'hlsjs-video',
+  'mux-audio',
+  'mux-background-video',
+  'mux-data',
+  'mux-video',
+  'native-hls-video',
+  'dash-video',
+];
 
-const entries = [
+/**
+ * Media entries, one bundle per name — or per flavor, for a name that is a
+ * directory.
+ *
+ * A directory ships its index as the flavor-neutral bundle and each flavor
+ * beside it, so `media/mux-video/spf` reads the same as the npm subpath it
+ * mirrors. The installation page derives CDN URLs from npm media subpaths, so
+ * the two layouts matching is what keeps a flavor reachable there without a
+ * translation step.
+ *
+ * A CDN page picks bundles at runtime rather than by import path, so this is
+ * where two flavors of one element can end up in a single realm — see the
+ * tag-collision note in `define/media/mux-video/spf`.
+ */
+const mediaEntries = media.flatMap((name) => {
+  const dir = `src/cdn/media/${name}`;
+
+  if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) {
+    return [{ src: `${dir}.ts`, name: `media/${name}` }];
+  }
+
+  return globSync(`${dir}/*.ts`).map((src) => {
+    const flavor = basename(src, '.ts');
+    return { src, name: flavor === 'index' ? `media/${name}` : `media/${name}/${flavor}` };
+  });
+});
+
+const localeEntries = globSync('src/cdn/locales/*.ts').map((file) => ({
+  src: file,
+  name: `locales/${basename(file, '.ts')}`,
+}));
+
+/**
+ * Every CDN bundle the build emits, as `{ src, name }` where `name` is the output path without
+ * its extension. Exported so the distribution archive can take its entry points from the build
+ * definition rather than guessing which built files are entries and which are shared chunks.
+ *
+ * The `src` paths are relative to this package, so importers must run from the package root.
+ */
+export const entries = [
+  { src: 'src/cdn/i18n.ts', name: 'i18n' },
+  ...localeEntries,
   ...presets.map((name) => ({ src: `src/cdn/${name}.ts`, name })),
-  ...media.map((name) => ({ src: `src/cdn/media/${name}.ts`, name: `media/${name}` })),
+  ...mediaEntries,
 ];
 
 /**
@@ -72,6 +129,7 @@ for (const mode of buildModes) {
   const entryMap = Object.fromEntries(entries.map(({ src, name }) => [isProd ? name : `${name}.dev`, src]));
 
   configs.push({
+    ...baseConfig,
     entry: entryMap,
     platform: 'browser',
     format: 'es',
@@ -96,6 +154,7 @@ for (const mode of buildModes) {
       __DEV__: isProd ? 'false' : 'true',
     },
     plugins: [
+      cdnI18nExternalPlugin({ prod: isProd }),
       inlineCssPlugin({ skinsDir, minify: isProd }),
       inlineTemplatePlugin({ minify: isProd }),
       ...(!isProd ? [dtsStubsPlugin(outDir)] : []),

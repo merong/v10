@@ -17,11 +17,11 @@ function getTemplateHTML() {
       <media-error-dialog class="media-error">
         <div class="media-error__dialog">
           <div class="media-error__content">
-            <media-alert-dialog-title class="media-error__title">Something went wrong.</media-alert-dialog-title>
+            <media-alert-dialog-title class="media-error__title"></media-alert-dialog-title>
             <media-alert-dialog-description class="media-error__description"></media-alert-dialog-description>
           </div>
           <div class="media-error__actions">
-            <media-alert-dialog-close class="media-button media-button--subtle">OK</media-alert-dialog-close>
+            <media-alert-dialog-close class="media-button media-button--subtle"></media-alert-dialog-close>
           </div>
         </div>
       </media-error-dialog>
@@ -29,12 +29,20 @@ function getTemplateHTML() {
       <div class="media-controls">
         <media-tooltip-group>
           <div class="media-button-group">
-            <media-play-button commandfor="play-tooltip" class="media-button media-button--subtle media-button--icon media-button--play">
-              ${renderIcon('restart', { class: 'media-icon media-icon--restart' })}
-              ${renderIcon('play', { class: 'media-icon media-icon--play' })}
-              ${renderIcon('pause', { class: 'media-icon media-icon--pause' })}
-            </media-play-button>
-            <media-tooltip id="play-tooltip" side="top" boundary="viewport" class="media-tooltip"></media-tooltip>
+            <span class="media-button--play__wrapper">
+              <media-buffering-indicator class="media-buffering-indicator">
+                ${renderIcon('spinner', { class: 'media-icon' })}
+              </media-buffering-indicator>
+              <media-play-button commandfor="play-tooltip" class="media-button media-button--subtle media-button--icon media-button--play">
+                ${renderIcon('restart', { class: 'media-icon media-icon--restart' })}
+                ${renderIcon('play', { class: 'media-icon media-icon--play' })}
+                ${renderIcon('pause', { class: 'media-icon media-icon--pause' })}
+              </media-play-button>
+              <media-tooltip id="play-tooltip" side="top" boundary="viewport" class="media-tooltip">
+                <media-tooltip-label></media-tooltip-label>
+                <media-tooltip-shortcut class="media-tooltip__kbd"></media-tooltip-shortcut>
+              </media-tooltip>
+            </span>
 
             <media-live-button class="media-button media-button--subtle media-button--live"></media-live-button>
           </div>
@@ -59,6 +67,13 @@ function getTemplateHTML() {
           </div>
         </media-tooltip-group>
       </div>
+
+      <!-- Hotkeys -->
+      <media-hotkey keys="Space" action="togglePaused"></media-hotkey>
+      <media-hotkey keys="k" action="togglePaused"></media-hotkey>
+      <media-hotkey keys="m" action="toggleMuted"></media-hotkey>
+      <media-hotkey keys="ArrowUp" action="volumeStep" value="0.05"></media-hotkey>
+      <media-hotkey keys="ArrowDown" action="volumeStep" value="-0.05"></media-hotkey>
     </media-container>
   `;
 }

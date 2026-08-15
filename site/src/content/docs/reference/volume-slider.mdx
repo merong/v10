@@ -37,7 +37,7 @@ import withPartsHtmlTs from "@/components/docs/demos/volume-slider/html/css/With
 
 ## Behavior
 
-Controls the media volume level. The slider maps its 0–100 internal range to the media's 0–1 volume scale. When the media is muted, the fill level drops to 0 regardless of the stored volume value.
+Controls the media volume level. The slider maps its 0–100 internal range to the media's 0–1 volume scale. When the media is muted, the fill level drops to 0 regardless of the stored volume value. When volume control is unavailable, the HTML custom element receives native `hidden`, `data-hidden`, and disabled ARIA semantics; the React component returns `null`.
 
 ## Styling
 
@@ -63,7 +63,7 @@ React renders a `<div>` element. Add a `className` to style it:
 
 ## Accessibility
 
-Renders with `role="slider"` and automatic `aria-label` of "Volume". Override with the `label` prop. Keyboard controls:
+Renders with `role="slider"` and an automatic `aria-label` that resolves to "Volume" from the active locale. Override with the `label` prop. Keyboard controls:
 
 - <kbd>Arrow Left</kbd> / <kbd>Arrow Right</kbd>: step by `step` increment
 - <kbd>Page Up</kbd> / <kbd>Page Down</kbd>: step by `largeStep` increment

@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPopupGroup } from '../popup-group';
 import { createTestPopover } from './popover-helpers';
 
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
 describe('createPopover', () => {
   it('starts closed', () => {
     const { popover } = createTestPopover();
@@ -10,6 +14,28 @@ describe('createPopover', () => {
   });
 
   describe('open/close', () => {
+    it('can defer open changes until the owner commits them', () => {
+      const { popover, onOpenChange } = createTestPopover({ deferOpenChanges: true });
+
+      popover.open();
+
+      expect(onOpenChange).toHaveBeenCalledWith(true, { reason: 'click' });
+      expect(popover.input.current).toEqual({ active: false, status: 'idle' });
+
+      popover.syncOpen(true);
+
+      expect(popover.input.current).toEqual({ active: true, status: 'starting' });
+
+      popover.close();
+
+      expect(onOpenChange).toHaveBeenCalledWith(false, { reason: 'click' });
+      expect(popover.input.current).toEqual({ active: true, status: 'starting' });
+
+      popover.syncOpen(false);
+
+      expect(popover.input.current).toEqual({ active: true, status: 'ending' });
+    });
+
     it('updates input state and calls onOpenChange when opening', () => {
       const { popover, onOpenChange } = createTestPopover();
 
@@ -140,14 +166,38 @@ describe('createPopover', () => {
   });
 
   describe('onOpenChangeComplete', () => {
-    it('fires after open animation completes', () => {
+    it('fires after open animation completes', async () => {
+      const onOpenChangeComplete = vi.fn();
+      const { popover } = createTestPopover({ onOpenChangeComplete });
+      const popup = document.createElement('div');
+      let finishAnimation!: () => void;
+      const finished = new Promise<void>((resolve) => {
+        finishAnimation = resolve;
+      });
+      const getAnimations = vi.fn(() => [{ finished }] as unknown as Animation[]);
+      Object.defineProperty(popup, 'getAnimations', { value: getAnimations });
+      popover.setPopupElement(popup);
+
+      popover.open();
+
+      await vi.waitFor(() => expect(getAnimations).toHaveBeenCalled());
+      expect(onOpenChangeComplete).not.toHaveBeenCalled();
+
+      finishAnimation();
+
+      await vi.waitFor(() => expect(onOpenChangeComplete).toHaveBeenCalledWith(true));
+    });
+
+    it('does not complete a close that is cancelled by reopening', async () => {
       const onOpenChangeComplete = vi.fn();
       const { popover } = createTestPopover({ onOpenChangeComplete });
 
       popover.open();
+      popover.close();
+      popover.open();
+      await Promise.resolve();
 
-      // Not called synchronously
-      expect(onOpenChangeComplete).not.toHaveBeenCalled();
+      expect(onOpenChangeComplete).not.toHaveBeenCalledWith(false);
     });
   });
 
@@ -160,6 +210,18 @@ describe('createPopover', () => {
 
       expect(popover.input.current.active).toBe(true);
       expect(onOpenChange).toHaveBeenCalledWith(true, expect.objectContaining({ reason: 'click' }));
+    });
+
+    it('does not open on click when trigger is aria-disabled', () => {
+      const { popover, onOpenChange } = createTestPopover();
+      const trigger = document.createElement('button');
+      trigger.setAttribute('aria-disabled', 'true');
+      popover.setTriggerElement(trigger);
+
+      popover.triggerProps.onClick({ preventDefault: vi.fn() } as unknown as UIEvent);
+
+      expect(popover.input.current.active).toBe(false);
+      expect(onOpenChange).not.toHaveBeenCalled();
     });
 
     it('closes on click when open', () => {
@@ -363,6 +425,57 @@ describe('createPopover', () => {
 
       popover.destroy();
       host.remove();
+    });
+  });
+
+  describe('focusout', () => {
+    it('keeps the popover open when blur follows an inside pointerdown', () => {
+      const { popover, onOpenChange } = createTestPopover();
+      const popup = document.createElement('div');
+      const child = document.createElement('button');
+      popup.appendChild(child);
+      document.body.appendChild(popup);
+
+      popover.setPopupElement(popup);
+      popover.open();
+      flush();
+      onOpenChange.mockClear();
+
+      child.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }));
+      popover.popupProps.onFocusOut({
+        relatedTarget: null,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      });
+
+      expect(onOpenChange).not.toHaveBeenCalledWith(false, expect.anything());
+
+      popover.destroy();
+      popup.remove();
+    });
+
+    it('closes after focus settles outside the popover', async () => {
+      const { popover, onOpenChange } = createTestPopover();
+      const popup = document.createElement('div');
+      document.body.appendChild(popup);
+
+      popover.setPopupElement(popup);
+      popover.open();
+      flush();
+      onOpenChange.mockClear();
+
+      popover.popupProps.onFocusOut({
+        relatedTarget: null,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      });
+      await nextFrame();
+      await nextFrame();
+
+      expect(onOpenChange).toHaveBeenCalledWith(false, expect.objectContaining({ reason: 'blur' }));
+
+      popover.destroy();
+      popup.remove();
     });
   });
 

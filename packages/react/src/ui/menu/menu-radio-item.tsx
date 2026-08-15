@@ -6,7 +6,7 @@ import { forwardRef, useCallback, useEffect, useRef } from 'react';
 
 import type { UIComponentProps } from '../../utils/types';
 import { renderElement } from '../../utils/use-render';
-import { useMenuContext, useMenuRadioGroupContext, useSubMenuContext } from './context';
+import { useMenuContext, useMenuRadioGroupContext } from './context';
 
 export interface MenuRadioItemProps extends UIComponentProps<'div', MenuState> {
   /** The value this item represents. */
@@ -20,10 +20,8 @@ export const MenuRadioItem = forwardRef<HTMLDivElement, MenuRadioItemProps>(func
   { render, className, style, value, disabled, onClick, ...elementProps },
   forwardedRef
 ) {
-  const { menu, state, stateAttrMap } = useMenuContext();
+  const { menu, state } = useMenuContext();
   const { value: groupValue, onValueChange } = useMenuRadioGroupContext();
-  const subMenuCtx = useSubMenuContext();
-  const parentMenu = subMenuCtx?.parentMenu.menu ?? null;
   const elementRef = useRef<HTMLDivElement>(null);
   const checked = groupValue === value;
 
@@ -37,10 +35,11 @@ export const MenuRadioItem = forwardRef<HTMLDivElement, MenuRadioItemProps>(func
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (disabled) return;
       onClick?.(event);
+      if (event.defaultPrevented) return;
       onValueChange(value);
-      completeMenuItemSelection(menu, parentMenu);
+      completeMenuItemSelection(menu);
     },
-    [disabled, onClick, onValueChange, value, menu, parentMenu]
+    [disabled, onClick, onValueChange, value, menu]
   );
 
   const handlePointerEnter = useCallback(() => {
@@ -54,7 +53,6 @@ export const MenuRadioItem = forwardRef<HTMLDivElement, MenuRadioItemProps>(func
     { render, className, style },
     {
       state,
-      stateAttrMap,
       ref: [forwardedRef, elementRef],
       props: [
         {

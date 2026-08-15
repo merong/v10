@@ -1,11 +1,16 @@
+import { captionsText } from '@videojs/core/i18n/text/menu';
 import { isString } from '@videojs/utils/predicate';
 import { cn } from '@videojs/utils/style';
-import { type ComponentProps, forwardRef, type ReactNode } from 'react';
+import { type ComponentProps, type CSSProperties, forwardRef, type ReactNode } from 'react';
+import { useTranslator } from '@/i18n/context';
 import {
+  AirPlayEnterIcon,
+  AirPlayExitIcon,
   CaptionsOffIcon,
   CaptionsOnIcon,
   CastEnterIcon,
   CastExitIcon,
+  CheckIcon,
   FullscreenEnterIcon,
   FullscreenExitIcon,
   PauseIcon,
@@ -18,9 +23,12 @@ import {
   VolumeLowIcon,
   VolumeOffIcon,
 } from '@/icons/minimal';
-import { Container, usePlayer } from '@/player/context';
+import { Container } from '@/player/container';
+import { usePlayer } from '@/player/context';
+import { AirPlayButton } from '@/ui/airplay-button';
 import { BufferingIndicator } from '@/ui/buffering-indicator';
 import { CaptionsButton } from '@/ui/captions-button';
+import { useCaptionsOptions } from '@/ui/captions-radio-group';
 import { CastButton } from '@/ui/cast-button';
 import { Controls } from '@/ui/controls';
 import { ErrorDialog } from '@/ui/error-dialog';
@@ -28,6 +36,7 @@ import { FullscreenButton } from '@/ui/fullscreen-button';
 import { Gesture } from '@/ui/gesture';
 import { Hotkey } from '@/ui/hotkey';
 import { LiveButton } from '@/ui/live-button';
+import { Menu } from '@/ui/menu';
 import { MuteButton } from '@/ui/mute-button';
 import { PiPButton } from '@/ui/pip-button';
 import { PlayButton } from '@/ui/play-button';
@@ -58,7 +67,7 @@ const Button = forwardRef<HTMLButtonElement, ComponentProps<'button'>>(function 
 });
 
 function VolumePopover(): ReactNode {
-  const volumeUnsupported = usePlayer((s) => s.volumeAvailability === 'unsupported');
+  const volumeUnavailable = usePlayer((s) => s.volumeAvailability !== 'available');
 
   const muteButton = (
     <MuteButton className="media-button--mute" render={<Button />}>
@@ -68,13 +77,13 @@ function VolumePopover(): ReactNode {
     </MuteButton>
   );
 
-  if (volumeUnsupported) return muteButton;
+  if (volumeUnavailable) return muteButton;
 
   return (
-    <Popover.Root openOnHover delay={200} closeDelay={100} side="top">
+    <Popover.Root openOnHover delay={200} closeDelay={100} side="right">
       <Popover.Trigger render={muteButton} />
       <Popover.Popup className="media-popover media-popover--volume">
-        <VolumeSlider.Root className="media-slider" orientation="vertical" thumbAlignment="edge">
+        <VolumeSlider.Root className="media-slider" orientation="horizontal" thumbAlignment="edge">
           <VolumeSlider.Track className="media-slider__track">
             <VolumeSlider.Fill className="media-slider__fill" />
           </VolumeSlider.Track>
@@ -92,11 +101,86 @@ function VolumePopover(): ReactNode {
  * the start and end button groups so they sit at opposite edges of the
  * control bar.
  */
-export function MinimalLiveVideoSkin(props: MinimalLiveVideoSkinProps): ReactNode {
-  const { children, className, poster, ...rest } = props;
+function CaptionsTrigger(): ReactNode {
+  const t = useTranslator();
+  const captions = useCaptionsOptions();
+  if (!captions) return null;
+
+  const { disabled } = captions;
+
+  if (!captions.showMenu) {
+    return (
+      <Tooltip.Root side="top">
+        <Tooltip.Trigger
+          render={
+            <CaptionsButton className="media-button--captions" render={<Button />}>
+              <CaptionsOffIcon className="media-icon media-icon--captions-off" />
+              <CaptionsOnIcon className="media-icon media-icon--captions-on" />
+            </CaptionsButton>
+          }
+        />
+        <Tooltip.Popup className="media-tooltip">
+          <Tooltip.Label />
+          <Tooltip.Shortcut className="media-tooltip__kbd" />
+        </Tooltip.Popup>
+      </Tooltip.Root>
+    );
+  }
 
   return (
-    <Container className={cn('media-minimal-skin media-minimal-skin--video', className)} {...rest}>
+    <Menu.Root side="top" align="center">
+      <Menu.Trigger
+        disabled={disabled}
+        render={
+          <CaptionsButton className="media-button--captions" render={<Button />}>
+            <CaptionsOffIcon className="media-icon media-icon--captions-off" />
+            <CaptionsOnIcon className="media-icon media-icon--captions-on" />
+          </CaptionsButton>
+        }
+      />
+      <Menu.Content className="media-popover media-menu media-menu--captions">
+        <Menu.RadioGroup
+          className="media-menu__group"
+          value={captions.value}
+          onValueChange={captions.setValue}
+          aria-label={t(captionsText)}
+        >
+          {captions.options.map((option) => (
+            <Menu.RadioItem
+              key={option.value}
+              className="media-menu__item"
+              value={option.value}
+              disabled={option.disabled}
+            >
+              <span>{option.label}</span>
+              <Menu.ItemIndicator
+                checked={option.value === captions.value}
+                forceMount
+                className="media-menu__indicator"
+              >
+                <CheckIcon className="media-icon" />
+              </Menu.ItemIndicator>
+            </Menu.RadioItem>
+          ))}
+        </Menu.RadioGroup>
+      </Menu.Content>
+    </Menu.Root>
+  );
+}
+
+export function MinimalLiveVideoSkin(props: MinimalLiveVideoSkinProps): ReactNode {
+  const { children, className, poster, placeholder, style, ...rest } = props;
+
+  const containerStyle = placeholder
+    ? ({ '--media-poster-placeholder': `url(${placeholder})`, ...style } as CSSProperties)
+    : style;
+
+  return (
+    <Container
+      className={cn('media-minimal-skin media-minimal-skin--video', className)}
+      style={containerStyle}
+      {...rest}
+    >
       {children}
 
       {poster && (
@@ -115,11 +199,11 @@ export function MinimalLiveVideoSkin(props: MinimalLiveVideoSkinProps): ReactNod
         <ErrorDialog.Popup className="media-error">
           <div className="media-error__dialog">
             <div className="media-error__content">
-              <ErrorDialog.Title className="media-error__title">Something went wrong.</ErrorDialog.Title>
+              <ErrorDialog.Title className="media-error__title"></ErrorDialog.Title>
               <ErrorDialog.Description className="media-error__description" />
             </div>
             <div className="media-error__actions">
-              <ErrorDialog.Close className="media-button media-button--primary">OK</ErrorDialog.Close>
+              <ErrorDialog.Close className="media-button media-button--primary"></ErrorDialog.Close>
             </div>
           </div>
         </ErrorDialog.Popup>
@@ -138,28 +222,21 @@ export function MinimalLiveVideoSkin(props: MinimalLiveVideoSkinProps): ReactNod
                   </PlayButton>
                 }
               />
-              <Tooltip.Popup className="media-tooltip" />
+              <Tooltip.Popup className="media-tooltip">
+                <Tooltip.Label />
+                <Tooltip.Shortcut className="media-tooltip__kbd" />
+              </Tooltip.Popup>
             </Tooltip.Root>
 
             <LiveButton className="media-button media-button--subtle media-button--live" />
+
+            <VolumePopover />
           </div>
 
           <div className="media-time-controls" aria-hidden="true" />
 
           <div className="media-button-group">
-            <VolumePopover />
-
-            <Tooltip.Root side="top">
-              <Tooltip.Trigger
-                render={
-                  <CaptionsButton className="media-button--captions" render={<Button />}>
-                    <CaptionsOffIcon className="media-icon media-icon--captions-off" />
-                    <CaptionsOnIcon className="media-icon media-icon--captions-on" />
-                  </CaptionsButton>
-                }
-              />
-              <Tooltip.Popup className="media-tooltip" />
-            </Tooltip.Root>
+            <CaptionsTrigger />
 
             <Tooltip.Root side="top">
               <Tooltip.Trigger
@@ -170,7 +247,25 @@ export function MinimalLiveVideoSkin(props: MinimalLiveVideoSkinProps): ReactNod
                   </CastButton>
                 }
               />
-              <Tooltip.Popup className="media-tooltip" />
+              <Tooltip.Popup className="media-tooltip">
+                <Tooltip.Label />
+                <Tooltip.Shortcut className="media-tooltip__kbd" />
+              </Tooltip.Popup>
+            </Tooltip.Root>
+
+            <Tooltip.Root side="top">
+              <Tooltip.Trigger
+                render={
+                  <AirPlayButton className="media-button--airplay" render={<Button />}>
+                    <AirPlayEnterIcon className="media-icon media-icon--airplay-enter" />
+                    <AirPlayExitIcon className="media-icon media-icon--airplay-exit" />
+                  </AirPlayButton>
+                }
+              />
+              <Tooltip.Popup className="media-tooltip">
+                <Tooltip.Label />
+                <Tooltip.Shortcut className="media-tooltip__kbd" />
+              </Tooltip.Popup>
             </Tooltip.Root>
 
             <Tooltip.Root side="top">
@@ -182,7 +277,10 @@ export function MinimalLiveVideoSkin(props: MinimalLiveVideoSkinProps): ReactNod
                   </PiPButton>
                 }
               />
-              <Tooltip.Popup className="media-tooltip" />
+              <Tooltip.Popup className="media-tooltip">
+                <Tooltip.Label />
+                <Tooltip.Shortcut className="media-tooltip__kbd" />
+              </Tooltip.Popup>
             </Tooltip.Root>
 
             <Tooltip.Root side="top">
@@ -194,7 +292,10 @@ export function MinimalLiveVideoSkin(props: MinimalLiveVideoSkinProps): ReactNod
                   </FullscreenButton>
                 }
               />
-              <Tooltip.Popup className="media-tooltip" />
+              <Tooltip.Popup className="media-tooltip">
+                <Tooltip.Label />
+                <Tooltip.Shortcut className="media-tooltip__kbd" />
+              </Tooltip.Popup>
             </Tooltip.Root>
           </div>
         </Tooltip.Provider>
@@ -217,35 +318,38 @@ export function MinimalLiveVideoSkin(props: MinimalLiveVideoSkinProps): ReactNod
       <Gesture type="tap" action="toggleControls" pointer="touch" />
       <Gesture type="doubletap" action="toggleFullscreen" region="center" />
 
-      {/* Input Feedback */}
-      <StatusAnnouncer />
-      <div className="media-input-feedback">
-        <VolumeIndicator.Root className="media-input-feedback-island media-input-feedback-island--volume">
-          <VolumeIndicator.Fill className="media-input-feedback-island__content">
+      {/* Input Indicators */}
+      <StatusAnnouncer className="media-sr-only" />
+      <div className="media-input-indicator-overlay">
+        <VolumeIndicator.Root className="media-volume-indicator">
+          <VolumeIndicator.Fill className="media-volume-indicator__content">
             <VolumeHighIcon className="media-icon media-icon--volume-high" />
             <VolumeLowIcon className="media-icon media-icon--volume-low" />
             <VolumeOffIcon className="media-icon media-icon--volume-off" />
-            <div className="media-input-feedback-island__progress" aria-hidden="true" />
-            <VolumeIndicator.Value className="media-input-feedback-island__value" />
+            <div className="media-volume-indicator__progress" aria-hidden="true" />
+            <VolumeIndicator.Value className="media-volume-indicator__value" />
           </VolumeIndicator.Fill>
         </VolumeIndicator.Root>
 
         <StatusIndicator.Root
           actions={TOP_STATUS_ACTIONS}
-          className="media-input-feedback-island media-input-feedback-island--status"
+          className="media-status-indicator media-status-indicator--state"
         >
-          <div className="media-input-feedback-island__content">
+          <div className="media-status-indicator__content">
             <CaptionsOnIcon className="media-icon media-icon--captions-on" />
             <CaptionsOffIcon className="media-icon media-icon--captions-off" />
             <FullscreenEnterIcon className="media-icon media-icon--fullscreen-enter" />
             <FullscreenExitIcon className="media-icon media-icon--fullscreen-exit" />
             <PipEnterIcon className="media-icon media-icon--pip-enter" />
             <PipExitIcon className="media-icon media-icon--pip-exit" />
-            <StatusIndicator.Value className="media-input-feedback-island__value" />
+            <StatusIndicator.Value className="media-status-indicator__value" />
           </div>
         </StatusIndicator.Root>
 
-        <StatusIndicator.Root actions={CENTER_STATUS_ACTIONS} className="media-input-feedback-bubble">
+        <StatusIndicator.Root
+          actions={CENTER_STATUS_ACTIONS}
+          className="media-status-indicator media-status-indicator--playback"
+        >
           <PlayIcon className="media-icon media-icon--play" />
           <PauseIcon className="media-icon media-icon--pause" />
         </StatusIndicator.Root>

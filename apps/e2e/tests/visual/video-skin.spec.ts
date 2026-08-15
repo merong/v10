@@ -41,14 +41,127 @@ for (const { name, path } of VISUAL_PAGES) {
       await player.hoverTimeSlider(50);
 
       // Wait for thumbnail to finish loading (deterministic, no fixed timeout)
-      const thumbnail = page.locator(SELECTORS.thumbnail).first();
-      await expect(thumbnail).toBeAttached({ timeout: 10_000 });
-      await expect(thumbnail).not.toHaveAttribute(DATA_ATTRS.loading, { timeout: 10_000 });
+      await expect(player.thumbnail).toBeAttached({ timeout: 10_000 });
+      await expect(player.thumbnail).not.toHaveAttribute(DATA_ATTRS.loading, { timeout: 10_000 });
 
       await expect(player.playerRoot).toHaveScreenshot(`video-${name.toLowerCase()}-storyboard.png`);
     });
   });
 }
+
+test.describe('Visual — Live Button', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/pages/html-video-mp4.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => customElements.get('video-skin'));
+  });
+
+  test('keeps the live-edge indicator colored when aria-disabled', async ({ page }) => {
+    const styles = await page.evaluate(() => {
+      const container = document.querySelector('video-skin')?.shadowRoot?.querySelector('media-container');
+      const liveButton = document.createElement('button');
+      liveButton.className = 'media-button media-button--live';
+      liveButton.setAttribute('aria-disabled', 'true');
+      liveButton.setAttribute('data-live-edge', '');
+
+      const disabledButton = document.createElement('button');
+      disabledButton.className = 'media-button';
+      disabledButton.setAttribute('aria-disabled', 'true');
+
+      container?.append(liveButton, disabledButton);
+
+      const liveStyle = getComputedStyle(liveButton);
+      const disabledStyle = getComputedStyle(disabledButton);
+      return {
+        live: { filter: liveStyle.filter, opacity: liveStyle.opacity },
+        disabled: { filter: disabledStyle.filter, opacity: disabledStyle.opacity },
+      };
+    });
+
+    expect(styles.live).toEqual({ filter: 'none', opacity: '0.5' });
+    expect(styles.disabled).toEqual({ filter: 'none', opacity: '0.5' });
+  });
+});
+
+// --- Portrait media layout ---
+
+test.describe('Visual — HTML Portrait Layout', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/pages/html-video-mp4.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => customElements.get('video-skin'));
+    await page.evaluate(() => {
+      const root = document.getElementById('root');
+      if (!root) return;
+
+      root.innerHTML = `
+        <video-player>
+          <video-skin style="width: 320px; aspect-ratio: 16/9">
+            <video width="270" height="480" playsinline></video>
+          </video-skin>
+        </video-player>
+      `;
+    });
+  });
+
+  test('keeps the authored skin aspect ratio', async ({ page }) => {
+    const box = await page.evaluate(() => {
+      const container = document.querySelector('video-skin')?.shadowRoot?.querySelector('media-container');
+      const rect = container?.getBoundingClientRect();
+
+      return rect ? { height: rect.height, width: rect.width } : null;
+    });
+
+    expect(box).not.toBeNull();
+    expect(box!.width / box!.height).toBeCloseTo(16 / 9, 1);
+  });
+
+  test('caps portrait thumbnails to the configured max height', async ({ page }) => {
+    const src = `data:image/svg+xml,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="270" height="480" viewBox="0 0 270 480"><rect width="270" height="480" fill="black"/></svg>'
+    )}`;
+
+    await page.evaluate((url) => {
+      const thumbnail = document
+        .querySelector('video-skin')
+        ?.shadowRoot?.querySelector('media-slider-thumbnail') as HTMLElement & {
+        thumbnails?: Array<{ url: string; startTime: number; width: number; height: number }>;
+      };
+
+      if (!thumbnail) return;
+      thumbnail.thumbnails = [{ url, startTime: 0, width: 270, height: 480 }];
+    }, src);
+
+    await page.waitForFunction(() => {
+      const thumbnail = document.querySelector('video-skin')?.shadowRoot?.querySelector('media-slider-thumbnail');
+
+      return (
+        thumbnail &&
+        !thumbnail.hasAttribute('data-hidden') &&
+        !thumbnail.hasAttribute('data-loading') &&
+        parseFloat(getComputedStyle(thumbnail).height) > 0
+      );
+    });
+
+    const size = await page.evaluate(() => {
+      const thumbnail = document.querySelector('video-skin')!.shadowRoot!.querySelector('media-slider-thumbnail')!;
+      const style = getComputedStyle(thumbnail);
+      const probe = document.createElement('div');
+      probe.style.height = style.getPropertyValue('--max-height');
+      document.body.append(probe);
+
+      const configuredMaxHeight = parseFloat(getComputedStyle(probe).height);
+      probe.remove();
+
+      return {
+        height: parseFloat(style.height),
+        configuredMaxHeight,
+        maxHeight: parseFloat(style.maxHeight),
+      };
+    });
+
+    expect(size.maxHeight).toBeCloseTo(size.configuredMaxHeight, 0);
+    expect(size.height).toBeLessThanOrEqual(size.maxHeight);
+  });
+});
 
 // --- Captions snapshot (dedicated page with subtitle track baked in) ---
 
@@ -64,15 +177,11 @@ test.describe('Visual — Captions', () => {
   test('captions enabled', async ({ page, browserName }) => {
     // WebKit doesn't render data:text/vtt subtitle tracks in headless mode
     test.skip(browserName === 'webkit', 'WebKit headless does not render data:text/vtt captions');
-    // Captions button should be available (subtitle track is in the HTML)
-    const captionsBtn = page.locator(SELECTORS.captionsButton).first();
-    await expect(captionsBtn).toHaveAttribute(DATA_ATTRS.availability, 'available', {
-      timeout: 5_000,
-    });
 
-    // Enable captions
-    await captionsBtn.click();
-    await expect(captionsBtn).toHaveAttribute(DATA_ATTRS.active, '');
+    await player.showControls();
+    await player.openCaptionsSettings();
+    await expect(page.locator(SELECTORS.activeMenuOptions)).toHaveCount(2);
+    await page.locator(SELECTORS.activeMenuOptions).nth(1).dispatchEvent('click');
 
     // Play briefly so the caption cue at 0:00 activates, then pause
     await player.play();

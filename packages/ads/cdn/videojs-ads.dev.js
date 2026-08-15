@@ -1,3 +1,42 @@
+//#region src/core/ads-json-client.ts
+function isAd(value) {
+	if (typeof value !== "object" || value === null) return false;
+	const obj = value;
+	return typeof obj.id === "string" && (obj.type === "video" || obj.type === "image") && typeof obj.src === "string" && typeof obj.mime === "string" && typeof obj.duration === "number" && typeof obj.skipAfter === "number";
+}
+function isAdsResponse(value) {
+	if (typeof value !== "object" || value === null) return false;
+	const obj = value;
+	return Array.isArray(obj.ads);
+}
+async function fetchAds(url, signal) {
+	try {
+		const response = await fetch(url, signal ? { signal } : void 0);
+		if (!response.ok) return [];
+		const data = await response.json();
+		if (!isAdsResponse(data)) return [];
+		return data.ads.filter(isAd);
+	} catch {
+		return [];
+	}
+}
+
+//#endregion
+//#region src/core/ads-tracker.ts
+function trackAdEvent(url, event, extra) {
+	if (!url) return;
+	fetch(url, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			event,
+			...extra
+		}),
+		keepalive: true
+	}).catch(() => {});
+}
+
+//#endregion
 //#region src/dom/ads-overlay.ts
 const ADS_STYLE_ID = "vjs-ads-overlay-style";
 const ADS_CSS = `
@@ -153,45 +192,6 @@ var AdsOverlay = class {
 		}
 	}
 };
-
-//#endregion
-//#region src/core/ads-json-client.ts
-function isAd(value) {
-	if (typeof value !== "object" || value === null) return false;
-	const obj = value;
-	return typeof obj.id === "string" && (obj.type === "video" || obj.type === "image") && typeof obj.src === "string" && typeof obj.mime === "string" && typeof obj.duration === "number" && typeof obj.skipAfter === "number";
-}
-function isAdsResponse(value) {
-	if (typeof value !== "object" || value === null) return false;
-	const obj = value;
-	return Array.isArray(obj.ads);
-}
-async function fetchAds(url, signal) {
-	try {
-		const response = await fetch(url, signal ? { signal } : void 0);
-		if (!response.ok) return [];
-		const data = await response.json();
-		if (!isAdsResponse(data)) return [];
-		return data.ads.filter(isAd);
-	} catch {
-		return [];
-	}
-}
-
-//#endregion
-//#region src/core/ads-tracker.ts
-function trackAdEvent(url, event, extra) {
-	if (!url) return;
-	fetch(url, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-			event,
-			...extra
-		}),
-		keepalive: true
-	}).catch(() => {});
-}
 
 //#endregion
 export { AdsOverlay, fetchAds, trackAdEvent };

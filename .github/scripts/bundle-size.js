@@ -4,7 +4,9 @@
  * Auto-discovers packages from `packages/`, reads their `exports` field to find
  * entry points, and externalizes `peerDependencies`.
  *
- * All sizes are standalone totals (minified + brotli).
+ * Each JS export is bundled independently. Sizes are initial static graph
+ * totals (minified + brotli); lazy dynamic chunks are measured separately so
+ * they stay visible without counting as eager entry cost.
  *
  * Wildcard exports (e.g., `./ui/*`, `./media/⁕/index.js`) are resolved to
  * actual files on disk. Supports both file-level (`*.js`) and directory-level
@@ -15,7 +17,7 @@
  * Each entry includes a `category` field for grouped reporting in html/react:
  * preset, media, player, skin, ui, or feature.
  *
- * Usage: node .github/scripts/bundle-size.js [--json output.json]
+ * Usage: node .github/scripts/bundle-size.js [--root repo-root] [--json output.json]
  */
 
 import { build, transform } from 'esbuild';
@@ -26,14 +28,19 @@ import {
   writeFileSync,
   existsSync,
 } from 'node:fs';
-import { resolve, dirname, join, basename } from 'node:path';
+import { resolve, dirname, join, basename, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '../..');
+const rootIndex = process.argv.indexOf('--root');
+const ROOT =
+  rootIndex !== -1
+    ? resolve(process.argv[rootIndex + 1])
+    : resolve(__dirname, '../..');
 const PACKAGES_DIR = join(ROOT, 'packages');
 
 const SKIP_PACKAGES = new Set([
+  'compiler',
   'react-native',
   'skins',
   'icons',
@@ -78,7 +85,7 @@ const PRESET_CONFIGS = [
  * Export name lookup tables for preset virtual bundles.
  *
  * Each key is `{preset}/{variant}` where variant is 'skin', 'player', 'media',
- * 'hls-media', or 'features'. Values are `{ path, name }` where path is relative
+ * 'hlsjs-video', or 'features'. Values are `{ path, name }` where path is relative
  * to the package dist/default/ directory and name is the exported identifier.
  */
 const PRESET_EXPORTS = {
@@ -91,7 +98,7 @@ const PRESET_EXPORTS = {
     'audio/player': { path: 'define/audio/player.js', name: 'AudioPlayerElement' },
     'background/skin': { path: 'define/background/skin.js', name: 'BackgroundVideoSkinElement' },
     'background/player': { path: 'define/background/player.js', name: 'BackgroundVideoPlayerElement' },
-    'hls-media': { path: 'define/media/hls-video.js', name: 'HlsVideoElement' },
+    'hlsjs-video': { path: 'define/media/hlsjs-video.js', name: 'HlsJsVideoElement' },
   },
   react: {
     'video/skin': { path: 'presets/video/skin.js', name: 'VideoSkin' },
@@ -102,7 +109,7 @@ const PRESET_EXPORTS = {
     'audio/media': { path: 'media/audio.js', name: 'Audio' },
     'background/skin': { path: 'presets/background/skin.js', name: 'BackgroundVideoSkin' },
     'background/media': { path: 'media/background-video/index.js', name: 'BackgroundVideo' },
-    'hls-media': { path: 'media/hls-video/index.js', name: 'HlsVideo' },
+    'hlsjs-video': { path: 'media/hlsjs-video/index.js', name: 'HlsJsVideo' },
     'video/features': { path: '../../../core/dist/default/dom/store/features/presets.js', name: 'videoFeatures' },
     'audio/features': { path: '../../../core/dist/default/dom/store/features/presets.js', name: 'audioFeatures' },
     'background/features': { path: '../../../core/dist/default/dom/store/features/presets.js', name: 'backgroundFeatures' },
@@ -137,7 +144,7 @@ function buildPresetEntry(pkgShortName, config, distDir) {
   if (!addExport(`${config.preset}/player`)) return null;
   if (!addExport(`${config.preset}/media`)) return null;
   if (!addExport(`${config.preset}/features`)) return null;
-  if (config.hls && !addExport('hls-media')) return null;
+  if (config.hls && !addExport('hlsjs-video')) return null;
 
   return lines.length > 0 ? lines.join('\n') : null;
 }
@@ -149,46 +156,107 @@ function buildPresetEntry(pkgShortName, config, distDir) {
  * @property {'root' | 'subpath'} type
  * @property {string} [category] - preset, media, player, skin, ui, feature (only for html/react)
  * @property {'js' | 'css'} format
- * @property {number} [standaloneSize] - For UI components: standalone size used for stable diff gating
+ * @property {number} [totalSize] - Initial + lazy dynamic chunk size
+ * @property {number} [lazySize] - Lazy dynamic chunk size
+ * @property {number} [chunkCount] - Number of dynamic chunks
  */
 
-/** Bundle entry points with esbuild and return the minified + brotli size. */
-async function measure(entryPoints, external = []) {
+function compressSize(code) {
+  return brotliCompressSync(Buffer.from(code), {
+    params: {
+      [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY,
+    },
+  }).length;
+}
+
+function outputPath(path) {
+  return resolve(ROOT, path);
+}
+
+function entryKey(path) {
+  return relative(ROOT, path).replaceAll('\\', '/');
+}
+
+function staticOutputs(metafile, entryPoint) {
+  const entryPointKey = entryPoint ? entryKey(entryPoint) : '<stdin>';
+  const outputs = new Set();
+  const queue = Object.entries(metafile.outputs)
+    .filter(([, output]) => output.entryPoint === entryPointKey)
+    .map(([path]) => path);
+
+  for (const path of queue) {
+    if (outputs.has(path)) continue;
+    outputs.add(path);
+
+    const output = metafile.outputs[path];
+    for (const link of output.imports ?? []) {
+      if (link.kind === 'dynamic-import') continue;
+      if (metafile.outputs[link.path]) queue.push(link.path);
+    }
+  }
+
+  return outputs;
+}
+
+function sizeFields(measurement) {
+  return {
+    size: measurement.size,
+    ...(measurement.lazySize > 0
+      ? {
+          totalSize: measurement.totalSize,
+          lazySize: measurement.lazySize,
+          chunkCount: measurement.chunkCount,
+        }
+      : {}),
+  };
+}
+
+/** Bundle one entry point with esbuild and return initial and lazy sizes. */
+async function measure(entryPoint, external = []) {
   const result = await build({
-    entryPoints,
+    entryPoints: [entryPoint],
     bundle: true,
     minify: true,
     treeShaking: true,
     format: 'esm',
+    splitting: true,
+    absWorkingDir: ROOT,
     write: false,
     outdir: '/tmp/bundle-size-out',
     external,
+    metafile: true,
     logLevel: 'silent',
   });
 
-  const code = result.outputFiles.map((f) => f.text).join('');
-  const compressed = brotliCompressSync(Buffer.from(code), {
-    params: {
-      [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY,
-    },
-  });
+  const sizeByPath = new Map(
+    result.outputFiles.map((file) => [file.path, compressSize(file.text)]),
+  );
+  const staticPaths = staticOutputs(result.metafile, entryPoint);
+  let size = 0;
+  let totalSize = 0;
 
-  return compressed.length;
+  for (const [path] of Object.entries(result.metafile.outputs)) {
+    const bytes = sizeByPath.get(outputPath(path)) ?? 0;
+    totalSize += bytes;
+    if (staticPaths.has(path)) size += bytes;
+  }
+
+  return {
+    size,
+    totalSize,
+    lazySize: Math.max(0, totalSize - size),
+    chunkCount: Math.max(0, result.outputFiles.length - staticPaths.size),
+  };
 }
 
 /** Minify a CSS file with esbuild then brotli-compress it. */
 async function measureCSS(filePath) {
   const content = readFileSync(filePath, 'utf8');
   const result = await transform(content, { loader: 'css', minify: true });
-  const compressed = brotliCompressSync(Buffer.from(result.code), {
-    params: {
-      [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY,
-    },
-  });
-  return compressed.length;
+  return compressSize(result.code);
 }
 
-/** Bundle a virtual entry (source string) with esbuild and return the minified + brotli size. */
+/** Bundle a virtual entry (source string) with esbuild and return initial and lazy sizes. */
 async function measureVirtual(code, resolveDir, external = []) {
   const result = await build({
     stdin: { contents: code, resolveDir, loader: 'js' },
@@ -196,20 +264,34 @@ async function measureVirtual(code, resolveDir, external = []) {
     minify: true,
     treeShaking: true,
     format: 'esm',
+    splitting: true,
+    absWorkingDir: ROOT,
     write: false,
     outdir: '/tmp/bundle-size-out',
     external,
+    metafile: true,
     logLevel: 'silent',
   });
 
-  const output = result.outputFiles.map((f) => f.text).join('');
-  const compressed = brotliCompressSync(Buffer.from(output), {
-    params: {
-      [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY,
-    },
-  });
+  const sizeByPath = new Map(
+    result.outputFiles.map((file) => [file.path, compressSize(file.text)]),
+  );
+  const staticPaths = staticOutputs(result.metafile);
+  let size = 0;
+  let totalSize = 0;
 
-  return compressed.length;
+  for (const [path] of Object.entries(result.metafile.outputs)) {
+    const bytes = sizeByPath.get(outputPath(path)) ?? 0;
+    totalSize += bytes;
+    if (staticPaths.has(path)) size += bytes;
+  }
+
+  return {
+    size,
+    totalSize,
+    lazySize: Math.max(0, totalSize - size),
+    chunkCount: Math.max(0, result.outputFiles.length - staticPaths.size),
+  };
 }
 
 /**
@@ -444,15 +526,11 @@ async function main() {
 
     const rootCat = categorize(pkg.name);
 
-    // Always measure root — needed for UI marginal calculations even when
-    // the root itself is excluded from results (categorized packages skip
-    // root because presets are measured as virtual bundles instead).
-    const rootSize = await measure([pkg.rootPath], pkg.external);
-
     if (rootCat !== '_skip') {
+      const rootMeasurement = await measure(pkg.rootPath, pkg.external);
       results.push({
         name: pkg.name,
-        size: rootSize,
+        ...sizeFields(rootMeasurement),
         type: 'root',
         ...(rootCat ? { category: rootCat } : {}),
         format: 'js',
@@ -474,27 +552,14 @@ async function main() {
         continue;
       }
 
-      // UI components are measured as marginal over root (size) for display,
-      // plus standalone (standaloneSize) for stable cross-build diff gating.
-      // Marginal sizes shift when root content changes due to brotli
-      // compression non-linearity, so diffs must gate on standalone.
-      let size;
-      let standaloneSize;
-      if (cat === 'ui') {
-        const combined = await measure([pkg.rootPath, sub.path], pkg.external);
-        size = Math.max(0, combined - rootSize);
-        standaloneSize = await measure([sub.path], pkg.external);
-      } else {
-        size = await measure([sub.path], pkg.external);
-      }
+      const measurement = await measure(sub.path, pkg.external);
 
       results.push({
         name: sub.name,
-        size,
+        ...sizeFields(measurement),
         type: 'subpath',
         ...(cat ? { category: cat } : {}),
         format: 'js',
-        ...(standaloneSize !== undefined ? { standaloneSize } : {}),
       });
     }
 
@@ -507,10 +572,10 @@ async function main() {
         const code = buildPresetEntry(pkgShortName, config, distDir);
         if (!code) continue;
 
-        const size = await measureVirtual(code, distDir, pkg.external);
+        const measurement = await measureVirtual(code, distDir, pkg.external);
         results.push({
           name: `${pkg.name}${config.label}`,
-          size,
+          ...sizeFields(measurement),
           type: 'subpath',
           category: 'preset',
           format: 'js',

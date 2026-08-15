@@ -1,22 +1,21 @@
 // Registers the audio player, container, and all audio UI custom elements
 // without creating a skin element. Use this entry when building an ejected
 // (light DOM) player layout.
+import { I18nProviderElement } from '../../i18n/provider-element';
 import { MediaContainerElement } from '../../media/container-element';
+import { BufferingIndicatorElement } from '../../ui/buffering-indicator/buffering-indicator-element';
 import { GestureElement } from '../../ui/gesture/gesture-element';
 import { HotkeyElement } from '../../ui/hotkey/hotkey-element';
 import { LiveButtonElement } from '../../ui/live-button/live-button-element';
 import { MuteButtonElement } from '../../ui/mute-button/mute-button-element';
 import { PlayButtonElement } from '../../ui/play-button/play-button-element';
 import { PlaybackRateButtonElement } from '../../ui/playback-rate-button/playback-rate-button-element';
-import { PlaybackRateMenuElement } from '../../ui/playback-rate-menu/playback-rate-menu-element';
-import { PlaybackRateMenuTriggerElement } from '../../ui/playback-rate-menu/playback-rate-menu-trigger-element';
-import { PlaybackRateOptionsElement } from '../../ui/playback-rate-menu/playback-rate-options-element';
+import { PlaybackRateRadioGroupElement } from '../../ui/playback-rate-radio-group/playback-rate-radio-group-element';
 import { PopoverElement } from '../../ui/popover/popover-element';
 import { SeekButtonElement } from '../../ui/seek-button/seek-button-element';
-import { TooltipElement } from '../../ui/tooltip/tooltip-element';
-import { TooltipGroupElement } from '../../ui/tooltip/tooltip-group-element';
+import { TextElement } from '../../ui/text/text-element';
 import { safeDefine } from '../safe-define';
-import { defineErrorDialog, defineMenu, defineTime, defineTimeSlider, defineVolumeSlider } from '../ui/compounds';
+import { defineErrorDialog, defineMenu, defineSliders, defineTime, defineTooltip } from '../ui/compounds';
 
 // Value import — player.ts body runs before this module's body.
 import { AudioPlayerElement } from './player';
@@ -25,25 +24,24 @@ import { AudioPlayerElement } from './player';
 
 safeDefine(AudioPlayerElement);
 safeDefine(MediaContainerElement);
+safeDefine(I18nProviderElement);
 
 // Compound groups.
 defineErrorDialog();
-defineTimeSlider();
-defineVolumeSlider();
+defineSliders();
 defineTime();
 defineMenu();
+defineTooltip();
 
 // Standalone elements.
 safeDefine(GestureElement);
 safeDefine(HotkeyElement);
+safeDefine(BufferingIndicatorElement);
 safeDefine(LiveButtonElement);
 safeDefine(MuteButtonElement);
 safeDefine(PlayButtonElement);
 safeDefine(PlaybackRateButtonElement);
-safeDefine(PlaybackRateOptionsElement);
-safeDefine(PlaybackRateMenuTriggerElement);
-safeDefine(PlaybackRateMenuElement);
+safeDefine(PlaybackRateRadioGroupElement);
 safeDefine(PopoverElement);
 safeDefine(SeekButtonElement);
-safeDefine(TooltipElement);
-safeDefine(TooltipGroupElement);
+safeDefine(TextElement);

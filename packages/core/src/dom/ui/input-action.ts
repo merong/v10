@@ -1,5 +1,7 @@
-import { IndicatorVisibilityCoordinator } from '../../core/ui/input-feedback/indicator-lifecycle';
-import type { InputActionEvent, MediaSnapshot } from '../../core/ui/input-feedback/status';
+import { isCaptionOrSubtitleTrack } from '@videojs/utils/dom';
+
+import { IndicatorVisibilityCoordinator } from '../../core/ui/indicator/indicator-lifecycle';
+import type { InputActionEvent, MediaSnapshot } from '../../core/ui/input-action/input-action';
 import { getGestureCoordinator } from '../gesture/coordinator';
 import type { GestureActivateEvent } from '../gesture/gesture';
 import type { HotkeyActivateEvent } from '../hotkey/coordinator';
@@ -8,6 +10,7 @@ import {
   selectFullscreen,
   selectPiP,
   selectPlayback,
+  selectPlaybackRate,
   selectTextTrack,
   selectTime,
   selectVolume,
@@ -34,15 +37,20 @@ export function getMediaSnapshot(store: MediaSnapshotStore | undefined): MediaSn
   const state = store.state;
   const time = selectTime(state);
 
+  const textTrack = selectTextTrack(state);
+
   return {
     paused: selectPlayback(state)?.paused,
     volume: selectVolume(state)?.volume,
     muted: selectVolume(state)?.muted,
+    playbackRate: selectPlaybackRate(state)?.playbackRate,
     fullscreen: selectFullscreen(state)?.fullscreen,
-    subtitlesShowing: selectTextTrack(state)?.subtitlesShowing,
+    subtitlesShowing: textTrack?.subtitlesShowing,
+    subtitlesAvailable: textTrack ? (textTrack.textTrackList ?? []).some(isCaptionOrSubtitleTrack) : undefined,
     pip: selectPiP(state)?.pip,
     currentTime: time?.currentTime,
     duration: time?.duration,
+    seeking: time?.seeking,
   };
 }
 

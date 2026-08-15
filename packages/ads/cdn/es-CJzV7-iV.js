@@ -1,0 +1,105 @@
+//#region ../core/dist/default/i18n/locales/es.js
+var es_default = {
+	buttons: {
+		play: "Reproducir",
+		pause: "Pausa",
+		replay: "Volver a reproducir",
+		mute: "Desactivar el sonido",
+		unmute: "Activar el sonido"
+	},
+	seek: {
+		forward: "Avanza {seconds} segundos",
+		backward: "Retrocede {seconds} segundos"
+	},
+	fullscreen: {
+		enter: "Pantalla completa",
+		exit: "Salir de pantalla completa"
+	},
+	captions: {
+		enable: "Activar subtítulos",
+		disable: "Desactivar subtítulos"
+	},
+	pip: {
+		enter: "Imagen sobre imagen",
+		exit: "Salir de imagen sobre imagen"
+	},
+	live: {
+		playing: "Reproduciendo en directo",
+		seekToEdge: "Ir al directo",
+		badge: "Directo"
+	},
+	cast: {
+		start: "Iniciar transmisión",
+		stop: "Detener transmisión",
+		connecting: "Conectando"
+	},
+	airplay: {
+		start: "Iniciar AirPlay",
+		stop: "Detener AirPlay"
+	},
+	slider: { seek: "Buscar" },
+	time: {
+		current: "Tiempo reproducido",
+		duration: "Duración total",
+		remaining: "Tiempo restante",
+		elapsedSuffix: "{duration} de tiempo transcurrido",
+		durationSuffix: "{duration} de duración",
+		remainingSuffix: "Quedan {duration}",
+		showElapsed: "Mostrar tiempo transcurrido, {duration}.",
+		showDuration: "Mostrar duración, {duration}.",
+		showRemaining: "Mostrar tiempo restante, {duration}.",
+		toggleElapsed: "Alternar entre el tiempo transcurrido y el tiempo restante.",
+		toggleDuration: "Alternar entre la duración y el tiempo restante.",
+		position: "{current} de {duration}"
+	},
+	playback: { rate: "Velocidad de reproducción {rate}" },
+	volume: {
+		mutedValue: "{percent}, silenciado",
+		muted: "Silenciado",
+		label: "Volumen",
+		value: "Volumen {value}"
+	},
+	status: {
+		captionsOn: "Subtítulos activados",
+		captionsOff: "Subtítulos desactivados",
+		paused: "En pausa",
+		playing: "Reproduciendo",
+		fullscreen: "Pantalla completa",
+		pip: "Imagen en imagen",
+		exitPip: "Salir de imagen en imagen",
+		seekedTo: "Se ha saltado a {time}"
+	},
+	container: { label: "Reproductor multimedia" },
+	errors: {
+		aborted: "Ha interrumpido la reproducción del vídeo.",
+		network: "Un error de red ha interrumpido la descarga del vídeo.",
+		decode: "La reproducción de vídeo se ha interrumpido por un problema de corrupción de datos o porque el vídeo precisa funciones que su navegador no ofrece.",
+		source: "No se ha podido cargar el vídeo debido a un fallo de red o del servidor o porque el formato es incompatible.",
+		encrypted: "El material audiovisual está cifrado y no tenemos las claves para descifrarlo.",
+		unplayable: "El reproductor no admite este medio.",
+		title: "Algo ha salido mal.",
+		unexpected: "Se ha producido un error. Inténtalo de nuevo."
+	},
+	common: {
+		empty: "",
+		ok: "Cerrar"
+	},
+	menu: {
+		settings: "Configuración",
+		quality: "Calidad",
+		audio: "Audio",
+		default: "Predeterminado",
+		speed: "Velocidad",
+		captions: "Subtítulos",
+		playbackRate: "Velocidad de reproducción",
+		back: "Atrás",
+		off: "Desactivado",
+		auto: "Automático",
+		autoWithLabel: "Automático ({label})",
+		subtitles: "Subtítulos"
+	}
+};
+
+//#endregion
+export { es_default as default };
+//# sourceMappingURL=es-CJzV7-iV.js.map

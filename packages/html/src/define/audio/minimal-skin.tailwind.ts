@@ -2,6 +2,7 @@ import { renderIcon } from '@videojs/icons/render/minimal';
 import {
   button,
   buttonGroup,
+  container,
   controls,
   error,
   icon,
@@ -9,9 +10,9 @@ import {
   iconFlipped,
   iconState,
   menu,
+  playButton,
   playbackRate,
   popup,
-  root,
   seek,
   slider,
   time,
@@ -28,7 +29,7 @@ const SEEK_TIME = 10;
 
 function getTemplateHTML() {
   return /*html*/ `
-    <media-container class="${root}">
+    <media-container class="${container}">
       <!-- @deprecated slot="media" is no longer required, use the default slot instead -->
       <slot name="media"></slot>
       <slot></slot>
@@ -36,11 +37,11 @@ function getTemplateHTML() {
       <media-error-dialog class="${error.root}">
         <div class="${error.dialog}">
           <div class="${error.content}">
-            <media-alert-dialog-title class="${error.title}">Something went wrong.</media-alert-dialog-title>
+            <media-alert-dialog-title class="${error.title}"></media-alert-dialog-title>
             <media-alert-dialog-description class="${error.description}"></media-alert-dialog-description>
           </div>
           <div class="${error.actions}">
-            <media-alert-dialog-close class="${cn(button.base, button.subtle)}">OK</media-alert-dialog-close>
+            <media-alert-dialog-close class="${cn(button.base, button.subtle)}"></media-alert-dialog-close>
           </div>
         </div>
       </media-error-dialog>
@@ -48,12 +49,20 @@ function getTemplateHTML() {
       <div class="${controls}">
         <media-tooltip-group>
           <div class="${buttonGroup}">
-              <media-play-button commandfor="play-tooltip" class="${cn(button.base, button.subtle, button.icon, iconState.play.button)}">
+            <span class="${playButton.wrapper}">
+              <media-buffering-indicator class="${playButton.bufferingRoot}">
+                ${renderIcon('spinner', { class: icon })}
+              </media-buffering-indicator>
+              <media-play-button commandfor="play-tooltip" class="${cn(button.base, button.subtle, button.icon, iconState.play.button, playButton.control)}">
                 ${renderIcon('restart', { class: cn(icon, iconState.play.restart) })}
                 ${renderIcon('play', { class: cn(icon, iconState.play.play) })}
                 ${renderIcon('pause', { class: cn(icon, iconState.play.pause) })}
               </media-play-button>
-              <media-tooltip id="play-tooltip" side="top" boundary="viewport" class="${cn(popup.tooltip)}"></media-tooltip>
+              <media-tooltip id="play-tooltip" side="top" boundary="viewport" class="${cn(popup.tooltip)}">
+                <media-tooltip-label></media-tooltip-label>
+                <media-tooltip-shortcut class="${popup.tooltipShortcut}"></media-tooltip-shortcut>
+              </media-tooltip>
+            </span>
 
             <media-seek-button commandfor="seek-backward-tooltip" seconds="${-SEEK_TIME}" class="${cn(button.base, button.subtle, button.icon)}">
               <span class="${iconContainer}">
@@ -61,7 +70,10 @@ function getTemplateHTML() {
                 <span class="${cn(seek.label, seek.labelBackward)}">${SEEK_TIME}</span>
               </span>
             </media-seek-button>
-            <media-tooltip id="seek-backward-tooltip" side="top" boundary="viewport" class="${cn(popup.tooltip)}"></media-tooltip>
+            <media-tooltip id="seek-backward-tooltip" side="top" boundary="viewport" class="${cn(popup.tooltip)}">
+              <media-tooltip-label></media-tooltip-label>
+              <media-tooltip-shortcut class="${popup.tooltipShortcut}"></media-tooltip-shortcut>
+            </media-tooltip>
 
             <media-seek-button commandfor="seek-forward-tooltip" seconds="${SEEK_TIME}" class="${cn(button.base, button.subtle, button.icon)}">
               <span class="${iconContainer}">
@@ -69,41 +81,32 @@ function getTemplateHTML() {
                 <span class="${cn(seek.label, seek.labelForward)}">${SEEK_TIME}</span>
               </span>
             </media-seek-button>
-            <media-tooltip id="seek-forward-tooltip" side="top" boundary="viewport" class="${cn(popup.tooltip)}"></media-tooltip>
+            <media-tooltip id="seek-forward-tooltip" side="top" boundary="viewport" class="${cn(popup.tooltip)}">
+              <media-tooltip-label></media-tooltip-label>
+              <media-tooltip-shortcut class="${popup.tooltipShortcut}"></media-tooltip-shortcut>
+            </media-tooltip>
           </div>
 
           <div class="${time.controls}">
             <media-time-group class="${time.group}">
-              <media-time type="current" class="${time.current}"></media-time>
+              <media-time toggle type="current" class="${time.current}"></media-time>
               <media-time-separator class="${time.separator}"></media-time-separator>
               <media-time type="duration" class="${time.duration}"></media-time>
             </media-time-group>
 
             <media-time-slider class="${slider.root}">
               <media-slider-track class="${slider.track}">
-                <media-slider-fill class="${cn(slider.fill.base, slider.fill.fill)}"></media-slider-fill>
                 <media-slider-buffer class="${cn(slider.fill.base, slider.fill.buffer)}"></media-slider-buffer>
+                <media-slider-fill class="${cn(slider.fill.base, slider.fill.fill)}"></media-slider-fill>
               </media-slider-track>
               <media-slider-thumb class="${cn(slider.thumb.base, slider.thumb.interactive)}"></media-slider-thumb>
+              <media-slider-preview class="${slider.preview}">
+                <media-slider-value type="pointer" class="${slider.value}"></media-slider-value>
+              </media-slider-preview>
             </media-time-slider>
           </div>
 
           <div class="${buttonGroup}">
-            <media-playback-rate-menu-trigger commandfor="playback-rate-menu" class="${cn(button.base, button.subtle, button.icon, playbackRate.button)}">
-            </media-playback-rate-menu-trigger>
-            <media-playback-rate-menu id="playback-rate-menu" side="top" align="center" boundary="viewport" class="${cn(popup.popover, menu.root)}">
-              <media-playback-rate-options class="${menu.group}">
-                <template>
-                  <media-menu-radio-item class="${menu.item}">
-                    <span data-part="label"></span>
-                    <media-menu-item-indicator force-mount class="${menu.indicator}">
-                      ${renderIcon('check', { class: icon })}
-                    </media-menu-item-indicator>
-                  </media-menu-radio-item>
-                </template>
-              </media-playback-rate-options>
-            </media-playback-rate-menu>
-
             <media-mute-button commandfor="audio-volume-popover" class="${cn(button.base, button.subtle, button.icon, iconState.mute.button)}">
               ${renderIcon('volume-off', { class: cn(icon, iconState.mute.volumeOff) })}
               ${renderIcon('volume-low', { class: cn(icon, iconState.mute.volumeLow) })}
@@ -118,9 +121,41 @@ function getTemplateHTML() {
                 <media-slider-thumb class="${slider.thumb.base}"></media-slider-thumb>
               </media-volume-slider>
             </media-popover>
+
+            <media-playback-rate-button commandfor="playback-rate-menu" class="${cn(button.base, button.subtle, button.icon, playbackRate.button)}">
+            </media-playback-rate-button>
+            <media-menu id="playback-rate-menu" side="top" align="center" boundary="viewport" class="${cn(popup.popover, menu.root)}">
+              <media-playback-rate-radio-group class="${menu.group}">
+                <template>
+                  <media-menu-radio-item class="${menu.item}">
+                    <span data-part="label"></span>
+                    <media-menu-item-indicator force-mount class="${menu.indicator}">
+                      ${renderIcon('check', { class: cn(icon, menu.icon) })}
+                    </media-menu-item-indicator>
+                  </media-menu-radio-item>
+                </template>
+              </media-playback-rate-radio-group>
+            </media-menu>
+
           </div>
         </media-tooltip-group>
       </div>
+
+      <!-- Hotkeys -->
+      <media-hotkey keys="Space" action="togglePaused"></media-hotkey>
+      <media-hotkey keys="k" action="togglePaused"></media-hotkey>
+      <media-hotkey keys="m" action="toggleMuted"></media-hotkey>
+      <media-hotkey keys="ArrowRight" action="seekStep" value="5"></media-hotkey>
+      <media-hotkey keys="ArrowLeft" action="seekStep" value="-5"></media-hotkey>
+      <media-hotkey keys="l" action="seekStep" value="10"></media-hotkey>
+      <media-hotkey keys="j" action="seekStep" value="-10"></media-hotkey>
+      <media-hotkey keys="ArrowUp" action="volumeStep" value="0.05"></media-hotkey>
+      <media-hotkey keys="ArrowDown" action="volumeStep" value="-0.05"></media-hotkey>
+      <media-hotkey keys="0-9" action="seekToPercent"></media-hotkey>
+      <media-hotkey keys="Home" action="seekToPercent" value="0"></media-hotkey>
+      <media-hotkey keys="End" action="seekToPercent" value="100"></media-hotkey>
+      <media-hotkey keys=">" action="speedUp"></media-hotkey>
+      <media-hotkey keys="<" action="speedDown"></media-hotkey>
     </media-container>
   `;
 }

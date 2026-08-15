@@ -185,8 +185,7 @@
   }
 }
 
-@custom-variant intent (&:hover,
-&:focus-within);
+@custom-variant intent (&:hover, &:focus-within);
 @custom-variant supports-container {
   @supports (container: size) {
     @slot;
@@ -194,6 +193,8 @@
 }
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant banner-dismissed (&:where(.banner-dismissed, .banner-dismissed *));
+@custom-variant starting-style (&[data-starting-style]);
+@custom-variant ending-style (&[data-ending-style]);
 
 @layer base {
   .list-decimal .list-decimal {

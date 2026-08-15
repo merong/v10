@@ -1,24 +1,33 @@
 'use client';
 
-import { VolumeIndicatorCore, VolumeIndicatorDataAttrs } from '@videojs/core';
+import { createInputIndicatorLabels, VolumeIndicatorCore, VolumeIndicatorDataAttrs } from '@videojs/core';
 import type { ForwardedRef } from 'react';
 import { forwardRef } from 'react';
 
+import { useTranslator } from '../../i18n/context';
 import type { UIComponentProps } from '../../utils/types';
 import { renderElement } from '../../utils/use-render';
-import { useInputIndicatorRoot } from '../input-indicators/use-input-indicator-root';
+import { useInputIndicatorRoot } from '../input-indicator/use-input-indicator-root';
 import { VolumeIndicatorProvider } from './context';
 
 export interface VolumeIndicatorRootProps
   extends UIComponentProps<'div', VolumeIndicatorCore.State>,
-    VolumeIndicatorCore.Props {}
+    Omit<VolumeIndicatorCore.Props, 'labels'> {}
 
 export const VolumeIndicatorRoot = forwardRef(function VolumeIndicatorRoot(
   componentProps: VolumeIndicatorRootProps,
   forwardedRef: ForwardedRef<HTMLDivElement>
 ) {
   const { render, className, style, closeDelay, ...elementProps } = componentProps;
-  const { elementRef, present, state } = useInputIndicatorRoot(() => new VolumeIndicatorCore(), { closeDelay });
+  const translator = useTranslator();
+  const { elementRef, present, state } = useInputIndicatorRoot(
+    () => new VolumeIndicatorCore(),
+    {
+      closeDelay,
+      labels: createInputIndicatorLabels(translator),
+    },
+    { replayOnUpdate: false }
+  );
 
   if (!present) return null;
 

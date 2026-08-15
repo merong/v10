@@ -1,5 +1,7 @@
 import '@app/styles.css';
-import { VideoProvider } from '@app/shared/react/providers';
+import { Chapters } from '@app/shared/react/chapters';
+import { VideoPlayer } from '@app/shared/react/players';
+import { SandboxI18nProvider } from '@app/shared/react/sandbox-i18n';
 import { VideoSkinComponent } from '@app/shared/react/skins';
 import { Storyboard } from '@app/shared/react/storyboard';
 import { useAutoplay } from '@app/shared/react/use-autoplay';
@@ -10,10 +12,9 @@ import { usePreload } from '@app/shared/react/use-preload';
 import { useSkin } from '@app/shared/react/use-skin';
 import { useSource } from '@app/shared/react/use-source';
 import { useStoryboard } from '@app/shared/react/use-storyboard';
-import { SOURCES } from '@app/shared/sources';
+import { getChapters, SOURCES } from '@app/shared/sources';
 import type { Styling } from '@app/types';
 import { Video } from '@videojs/react/video';
-import { useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 
 function readStyling(): Styling {
@@ -23,7 +24,7 @@ function readStyling(): Styling {
 function App() {
   const skin = useSkin();
   const source = useSource();
-  const styling = useMemo(readStyling, []);
+  const styling = readStyling();
   const poster = usePoster();
   const storyboard = useStoryboard();
   const autoplay = useAutoplay();
@@ -32,21 +33,24 @@ function App() {
   const preload = usePreload();
 
   return (
-    <VideoProvider>
-      <VideoSkinComponent poster={poster} skin={skin} styling={styling} className="aspect-video max-w-4xl mx-auto">
-        <Video
-          src={SOURCES[source].url}
-          autoPlay={autoplay}
-          muted={muted}
-          loop={loop}
-          preload={preload}
-          playsInline
-          crossOrigin="anonymous"
-        >
-          <Storyboard src={storyboard} />
-        </Video>
-      </VideoSkinComponent>
-    </VideoProvider>
+    <SandboxI18nProvider>
+      <VideoPlayer>
+        <VideoSkinComponent poster={poster} skin={skin} styling={styling} className="aspect-video max-w-4xl mx-auto">
+          <Video
+            src={SOURCES[source].url}
+            autoPlay={autoplay}
+            muted={muted}
+            loop={loop}
+            preload={preload}
+            playsInline
+            crossOrigin="anonymous"
+          >
+            <Chapters tracks={getChapters(source)} />
+            <Storyboard src={storyboard} />
+          </Video>
+        </VideoSkinComponent>
+      </VideoPlayer>
+    </SandboxI18nProvider>
   );
 }
 

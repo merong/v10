@@ -8,9 +8,12 @@ import {
   selectLive,
   selectTime,
 } from '@videojs/core/dom';
+import { resolveText, type Text, translateText } from '@videojs/core/i18n';
 import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
 import type { State } from '@videojs/store';
 
+import { i18nContext } from '../../i18n/context';
+import { I18nController } from '../../i18n/controller';
 import { playerContext } from '../../player/context';
 import { PlayerController } from '../../player/player-controller';
 import { MediaElement } from '../media-element';
@@ -32,26 +35,29 @@ export class LiveButtonElement extends MediaElement {
   };
 
   disabled = false;
-  label = '';
+  label: Text | string = '';
 
   protected readonly core = new LiveButtonCore();
 
   protected readonly live = new PlayerController(this, playerContext, selectLive);
   protected readonly time = new PlayerController(this, playerContext, selectTime);
   protected readonly buffer = new PlayerController(this, playerContext, selectBuffer);
+  readonly #i18n = new I18nController(this, i18nContext);
 
   get $state(): State<LiveButtonCore.State> {
     return this.core.state;
   }
 
+  #defaultContent = false;
   #disconnect: AbortController | null = null;
 
   override connectedCallback(): void {
     super.connectedCallback();
     if (this.destroyed) return;
 
-    if (!this.textContent?.trim()) {
-      this.textContent = LiveButtonCore.defaultText;
+    this.#defaultContent ||= !this.textContent?.trim();
+    if (this.#defaultContent) {
+      this.textContent = translateText(LiveButtonCore.defaultText, this.#i18n.value);
     }
 
     this.#disconnect = new AbortController();
@@ -79,7 +85,15 @@ export class LiveButtonElement extends MediaElement {
 
   /** Returns the button's current label derived from media state. */
   getLabel(): string | undefined {
-    return this.core.state.current.label || undefined;
+    return this.core.state.current.label ? resolveText(this.core.state.current.label) : undefined;
+  }
+
+  /** Resolved label for tooltips and other display surfaces. */
+  getResolvedLabel(): string | undefined {
+    const media = this.#getMedia();
+    if (!media) return undefined;
+    const state = this.core.getState();
+    return translateText(this.core.getLabel(state), this.#i18n.value);
   }
 
   protected override willUpdate(changed: PropertyValues): void {
@@ -90,12 +104,20 @@ export class LiveButtonElement extends MediaElement {
   protected override update(changed: PropertyValues): void {
     super.update(changed);
 
+    if (this.#defaultContent) {
+      this.textContent = translateText(LiveButtonCore.defaultText, this.#i18n.value);
+    }
+
     const media = this.#getMedia();
     if (!media) return;
 
     this.core.setMedia(media);
     const state = this.core.getState();
-    applyElementProps(this, this.core.getAttrs(state));
+    const attrs = this.core.getAttrs(state);
+    applyElementProps(this, {
+      ...attrs,
+      'aria-label': translateText(attrs['aria-label'], this.#i18n.value),
+    });
     applyStateDataAttrs(this, state, LiveButtonDataAttrs);
   }
 

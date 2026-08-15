@@ -2,13 +2,15 @@ import { renderIcon } from '@videojs/icons/render';
 import {
   button,
   buttonGroup,
+  container,
   controls,
   error,
   icon,
   iconState,
+  playButton,
   popup,
-  root,
   slider,
+  spacer,
 } from '@videojs/skins/default/tailwind/audio.tailwind';
 import { createTemplate } from '@videojs/utils/dom';
 import { cn } from '@videojs/utils/style';
@@ -20,7 +22,7 @@ import './ui';
 
 function getTemplateHTML() {
   return /*html*/ `
-    <media-container class="${root}">
+    <media-container class="${container}">
       <!-- @deprecated slot="media" is no longer required, use the default slot instead -->
       <slot name="media"></slot>
       <slot></slot>
@@ -28,11 +30,11 @@ function getTemplateHTML() {
       <media-error-dialog class="${error.root}">
         <div class="${error.dialog}">
           <div class="${error.content}">
-            <media-alert-dialog-title class="${error.title}">Something went wrong.</media-alert-dialog-title>
+            <media-alert-dialog-title class="${error.title}"></media-alert-dialog-title>
             <media-alert-dialog-description class="${error.description}"></media-alert-dialog-description>
           </div>
           <div class="${error.actions}">
-            <media-alert-dialog-close class="${cn(button.base, button.subtle)}">OK</media-alert-dialog-close>
+            <media-alert-dialog-close class="${cn(button.base, button.subtle)}"></media-alert-dialog-close>
           </div>
         </div>
       </media-error-dialog>
@@ -40,17 +42,25 @@ function getTemplateHTML() {
       <div class="${controls}">
         <media-tooltip-group>
           <div class="${buttonGroup}">
-              <media-play-button commandfor="play-tooltip" class="${cn(button.base, button.subtle, button.icon, iconState.play.button)}">
+            <span class="${playButton.wrapper}">
+              <media-buffering-indicator class="${playButton.bufferingRoot}">
+                ${renderIcon('spinner', { class: icon })}
+              </media-buffering-indicator>
+              <media-play-button commandfor="play-tooltip" class="${cn(button.base, button.subtle, button.icon, iconState.play.button, playButton.control)}">
                 ${renderIcon('restart', { class: cn(icon, iconState.play.restart) })}
                 ${renderIcon('play', { class: cn(icon, iconState.play.play) })}
                 ${renderIcon('pause', { class: cn(icon, iconState.play.pause) })}
               </media-play-button>
-              <media-tooltip id="play-tooltip" side="top" boundary="viewport" class="${cn(popup.tooltip)}"></media-tooltip>
+              <media-tooltip id="play-tooltip" side="top" boundary="viewport" class="${cn(popup.tooltip)}">
+                <media-tooltip-label></media-tooltip-label>
+                <media-tooltip-shortcut class="${popup.tooltipShortcut}"></media-tooltip-shortcut>
+              </media-tooltip>
+            </span>
 
               <media-live-button class="${cn(button.base, button.subtle, button.live)}"></media-live-button>
           </div>
 
-          <div class="grow" aria-hidden="true"></div>
+          <div class="${spacer}" aria-hidden="true"></div>
 
           <div class="${buttonGroup}">
             <media-mute-button commandfor="live-audio-volume-popover" class="${cn(button.base, button.subtle, button.icon, iconState.mute.button)}">
@@ -70,6 +80,13 @@ function getTemplateHTML() {
           </div>
         </media-tooltip-group>
       </div>
+
+      <!-- Hotkeys -->
+      <media-hotkey keys="Space" action="togglePaused"></media-hotkey>
+      <media-hotkey keys="k" action="togglePaused"></media-hotkey>
+      <media-hotkey keys="m" action="toggleMuted"></media-hotkey>
+      <media-hotkey keys="ArrowUp" action="volumeStep" value="0.05"></media-hotkey>
+      <media-hotkey keys="ArrowDown" action="volumeStep" value="-0.05"></media-hotkey>
     </media-container>
   `;
 }
