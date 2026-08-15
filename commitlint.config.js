@@ -13,6 +13,7 @@ export default {
       2,
       'always',
       [
+        'ads',
         'build',
         'cd',
         'ci',
