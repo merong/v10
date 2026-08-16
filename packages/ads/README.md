@@ -7,42 +7,24 @@ Video.js 10용 프리롤 광고 프레임워크. JSON API 기반으로 자체 �
 ```
 @videojs/ads
 ├── core/              # 런타임 비의존 로직
-│   ├── ads-state.ts        # 타입 정의 (Ad, AdPhase, MediaAdsState)
+│   ├── ads-state.ts        # 타입 정의 (Ad, AdsResponse)
 │   ├── ads-json-client.ts  # JSON API fetch 클라이언트
 │   └── ads-tracker.ts      # 광고 트래킹 이벤트 전송
+├── define/
+│   └── media-ads.ts        # <media-ads> 등록
 └── dom/               # DOM 전용 로직
-    ├── ads-feature.ts      # Feature Slice (상태 머신 + store 연동)
-    ├── ads-overlay.ts      # 오버레이 UI (타이머, 스킵 버튼, 미디어)
-    └── ads-overlay.css     # 오버레이 스타일 (인라인 주입)
+    ├── media-ads-element.ts # <media-ads> — 광고 수명주기
+    ├── ads-overlay.ts       # 오버레이 UI (타이머, 스킵 버튼, 미디어)
+    └── ads-overlay.css      # 오버레이 스타일 (빌드가 파일로 방출)
 ```
 
 ### 의존성 계층
 
 ```
-@videojs/utils ← @videojs/store ← @videojs/ads
+@videojs/utils ← @videojs/element ← @videojs/html ← @videojs/ads
 ```
 
-`@videojs/core`에 의존하지 않으므로 순환 참조 없이 독립적으로 사용할 수 있습니다.
-
-## 상태 머신
-
-```
-idle → loading → ready → playing → done
-                            ↓
-                        skipped → done
-
-error (어느 단계에서든 발생 가능)
-```
-
-| 상태 | 설명 |
-|------|------|
-| `idle` | 초기 상태, 광고 미로드 |
-| `loading` | JSON API에서 광고 데이터 로딩 중 |
-| `ready` | 광고 로드 완료, 재생 대기 |
-| `playing` | 광고 재생 중 (타이머 동작) |
-| `skipped` | 사용자가 광고 건너뛰기 |
-| `done` | 광고 완료 또는 스킵, 콘텐츠 재생 재개 |
-| `error` | 광고 로딩 실패 (콘텐츠 정상 재생) |
+`<media-ads>`는 플레이어 스토어에 feature를 더하지 않고 컨텍스트만 소비하므로, 어떤 v10 플레이어 번들에도 그대로 꽂힙니다.
 
 ## JSON API 스펙
 
@@ -105,30 +87,6 @@ JSON API에서 광고 데이터를 가져옵니다. 응답 검증 후 유효한 
 
 트래킹 이벤트를 전송합니다. `keepalive: true`로 페이지 이탈 시에도 전송을 보장합니다. 실패해도 무시합니다.
 
-### `adsFeature` (Feature Slice)
-
-Video.js 10의 `defineSlice<AdsTarget>()` 패턴으로 구현된 Feature Slice입니다.
-
-**State:**
-
-```ts
-interface MediaAdsState {
-  adPhase: AdPhase;
-  currentAd: Ad | null;
-  adCurrentTime: number;
-  adDuration: number;
-  skipAvailable: boolean;
-  skipCountdown: number;
-  loadAds(url: string): Promise<void>;
-  skipAd(): void;
-}
-```
-
-**동작:**
-- `loadAds(url)` — JSON API 호출 → 파싱 → `ready` 상태 전환
-- `attach()` — media `play` 이벤트 감지 → `ready`면 콘텐츠 pause → 광고 타이머 시작
-- `skipAd()` — 트래킹 전송 → `done` 상태 → 콘텐츠 재생 재개
-
 ### `AdsOverlay` 클래스
 
 콘텐츠 플레이어 위에 오버레이되는 광고 UI를 관리합니다.
@@ -184,21 +142,6 @@ video.addEventListener('play', () => {
 });
 ```
 
-### Video.js 10 Feature Slice로 사용
-
-```ts
-import { videoFeatures } from '@videojs/core/dom';
-import { createPlayer } from '@videojs/html';
-import { adsFeature } from '@videojs/ads/dom';
-
-const { ProviderMixin, ContainerMixin } = createPlayer({
-  features: [...videoFeatures, adsFeature],
-});
-
-// store에서 광고 로딩
-store.state.loadAds('/api/ads?context=preroll');
-```
-
 ## 지원 미디어 형식
 
 | 형식 | type | 표시 방식 |
@@ -224,14 +167,6 @@ pnpm -F @videojs/ads test:watch
 - `ads-feature.test.ts` — 초기 상태, loadAds 전환, skipAd (6개)
 - `ads-overlay.test.ts` — DOM 생성, 미디어, 타이머, 스킵, 정리 (9개)
 
-## Sandbox 데모
-
-```bash
-pnpm dev:sandbox
-```
-
-브라우저에서 Preset 드롭다운 → **Video + Ads** 선택. Mock 광고 데이터(`/mock/ads.json`)로 프리롤 광고가 동작합니다.
-
 ## 설계 결정
 
 ### videojs-contrib-ads와의 관계
@@ -249,10 +184,6 @@ pnpm dev:sandbox
 ### core/dom 분리
 
 v10의 패턴을 따라 런타임 비의존 로직(`core/`)과 DOM 전용 로직(`dom/`)을 분리했습니다. 타입과 JSON 클라이언트는 어떤 환경에서든 사용 가능합니다.
-
-### CSS 인라인 주입
-
-별도 CSS 파일 임포트 없이 `AdsOverlay` 생성 시 `<style>` 태그를 자동 주입합니다. 중복 주입을 방지하기 위해 ID 기반 체크를 수행합니다.
 
 ## 향후 확장 가능 영역
 

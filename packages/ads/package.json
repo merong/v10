@@ -44,7 +44,6 @@
   "dependencies": {
     "@videojs/element": "workspace:*",
     "@videojs/html": "workspace:*",
-    "@videojs/store": "workspace:*",
     "@videojs/utils": "workspace:*"
   },
   "devDependencies": {

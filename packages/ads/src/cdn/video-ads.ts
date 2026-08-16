@@ -24,7 +24,7 @@ import '@videojs/html/ui/poster';
 import '../define/media-ads';
 
 export { fetchAds } from '../core/ads-json-client';
-export type { Ad, AdMediaType, AdPhase, AdsResponse, MediaAdsState } from '../core/ads-state';
+export type { Ad, AdMediaType, AdsResponse } from '../core/ads-state';
 export { trackAdEvent } from '../core/ads-tracker';
 export type { AdsOverlayLabels, AdsOverlayOptions } from '../dom/ads-overlay';
 // Ads exports
