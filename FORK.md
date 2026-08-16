@@ -28,6 +28,8 @@ Ads are a plugin in the shape the player already uses: a custom element that fin
 
 **The fork's maintenance cost is not the amount of code it adds. It is the amount of upstream's tree it touches.**
 
+Code only ever moves one way. `videojs/v10` is a read-only reference here — the fork takes its commits and sends nothing back. So nothing written into upstream's tree is ever absorbed by it, and every line the fork puts there is a bill due at every future sync, permanently. Do not design for upstream's acceptance, propose changes to it, or leave work in its files expecting them to graduate.
+
 The last sync took 255 upstream commits with 19 breaking changes. It produced six conflicts, and every one was in a file the fork had edited inside upstream's tree — three of them in `apps/sandbox/`. Nothing in `packages/ads/` conflicted, because upstream has no such directory.
 
 So:
