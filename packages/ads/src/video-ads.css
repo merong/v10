@@ -1,0 +1,11 @@
+/*
+ * The stylesheet a page links next to `video-ads.js`.
+ *
+ * It carries only what lives in light DOM. The skin's own styles cannot ship
+ * here: they apply inside the skin's shadow root, which a linked stylesheet
+ * cannot reach, so the player bundle carries them and adopts them at runtime.
+ * One JS file and one CSS file is still what a page loads — the split follows
+ * the DOM boundary rather than a packaging choice.
+ */
+
+@import "./dom/ads-overlay.css";

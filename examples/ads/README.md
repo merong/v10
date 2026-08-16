@@ -38,38 +38,40 @@ That page's script tag carries `defer`, and it has to. A classic script runs whi
 | `video-preroll` | `video` | `media/sample-ad.mp4` |
 | `image-preroll` | `image` | `media/sample-ad.webp` |
 
-The first entry runs by default. Add `?ad=image-preroll` to any page to pick the other one.
-
-Point `ADS_URL` in `preroll.js` at your own endpoint when you adapt this — the JSON shape is the contract, not the file.
+The first entry runs. Point `<media-ads src>` at your own endpoint when you adapt this — the JSON shape is the contract, not the file.
 
 ## How it fits together
 
-`dist/video-ads.js` and `dist/video-ads.iife.js` each carry the whole player plus the ads code. `dist/videojs-ads.js` is the ads half alone, for pages that already load a player. All three expose the same three helpers:
+There is no wiring code on any of these pages. `<media-ads>` finds the player through context, fetches the list, waits for the first play, runs the ad, and hands playback back.
 
-| Export | Role |
-| --- | --- |
-| `fetchAds(url)` | Reads an ad list and drops anything malformed. Returns `[]` on failure, so a broken ad server never blocks playback. |
-| `AdsOverlay` | Draws the ad above the player: media, countdown timer, skip button. |
-| `trackAdEvent(url, event)` | Fires an impression, complete, skip, or click beacon. No-ops without a `trackingUrl`. |
+```html
+<video-player>
+  <video-skin>
+    <video src="/video.mp4" playsinline></video>
+    <media-ads src="/ads.json"></media-ads>
+  </video-skin>
+</video-player>
+```
 
-`preroll.js` holds the lifecycle and is shared by all three pages. It is a classic script rather than a module so `iife.html` can stay free of `type="module"`; each page only differs in how it obtains the three helpers.
+`dist/video-ads.js` and `dist/video-ads.iife.js` each carry the whole player plus the ads code. `dist/videojs-ads.js` is the ads half alone, for a page that already loads a player. All three also export `fetchAds`, `AdsOverlay`, and `trackAdEvent` for driving an ad by hand instead.
 
-The overlay is absolutely positioned, so it needs a container that establishes a positioning context. That is the one non-obvious piece of the markup, and the only reason the pages wrap the player in `<div class="player">`.
+The element adds nothing to the player store. Store features are fixed when a player is built, so an ads feature would mean shipping a player of our own; consuming context instead means `<media-ads>` drops into any v10 player bundle.
 
 ## Overlay text
 
-`AdsOverlay` renders four pieces of text, all in English by default. Pass `labels` to change any of them; anything you leave out keeps its default.
+Four pieces of text, all in English by default. Set them as attributes; anything you leave out keeps its default.
 
-```js
-new AdsOverlay(container, {
-  labels: {
-    skip: '광고 건너뛰기',
-    skipCountdown: (seconds) => `${seconds}초 후 건너뛰기`,
-    timer: (elapsed, duration) => `광고 ${elapsed} / ${duration}`,
-    mediaAlt: '광고',
-  },
-});
+```html
+<media-ads
+  src="/ads.json"
+  skip-label="광고 건너뛰기"
+  skip-countdown-label="{seconds}초 후 건너뛰기"
+  timer-label="광고 {elapsed} / {duration}"
+  media-alt="광고"
+></media-ads>
 ```
+
+An attribute cannot carry a function, so the countdown and timer take templates — `{seconds}`, `{elapsed}`, and `{duration}` mark where the numbers go. Driving `AdsOverlay` by hand takes the same labels as functions.
 
 | Label | Default | Shown |
 | --- | --- | --- |
@@ -84,7 +86,7 @@ These labels do not go through the player's translation registry — an overlay 
 
 ## Known limits
 
-The ad timer runs on `requestAnimationFrame`, so it stalls while the tab is in the background and then resumes out of step with the ad media. `AdsOverlay` does not expose its media element, so a consumer cannot drive the timer from actual playback instead.
+An image ad's countdown runs on an interval, which browsers throttle in a background tab — the ad then finishes later than its `duration` says. A video ad is unaffected: its countdown follows the ad's own `timeupdate`.
 
 ## Related
 

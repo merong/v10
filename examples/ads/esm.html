@@ -4,41 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Preroll ad — one ES module</title>
-    <link rel="stylesheet" href="./dist/ads-overlay.css" />
+    <link rel="stylesheet" href="./dist/video-ads.css" />
     <link rel="stylesheet" href="./style.css" />
 
     <!-- One file carries the player and the ads code. -->
     <script type="module" src="./dist/video-ads.js"></script>
-    <script src="./preroll.js"></script>
   </head>
   <body>
     <main>
       <h1>One ES module</h1>
 
-      <div class="player">
-        <video-player>
-          <video-skin>
-            <video
-              src="https://stream.mux.com/lhnU49l1VGi3zrTAZhDm9LUUxSjpaPW9BL4jY25Kwo4/highest.mp4"
-              playsinline
-              crossorigin="anonymous"
-            ></video>
-          </video-skin>
-        </video-player>
-      </div>
+      <video-player>
+        <video-skin>
+          <video src="https://stream.mux.com/lhnU49l1VGi3zrTAZhDm9LUUxSjpaPW9BL4jY25Kwo4/highest.mp4" playsinline crossorigin="anonymous"></video>
+          <media-ads src="./ads.json"></media-ads>
+        </video-skin>
+      </video-player>
 
       <div class="meta">
         <span class="tag">&lt;script type="module" src="./dist/video-ads.js"&gt;</span>
-        <span data-ad-label></span>
       </div>
 
       <nav><a href="./">← All three forms</a></nav>
     </main>
-
-    <script type="module">
-      import { AdsOverlay, fetchAds, trackAdEvent } from './dist/video-ads.js';
-
-      startPreroll({ AdsOverlay, fetchAds, trackAdEvent });
-    </script>
   </body>
 </html>

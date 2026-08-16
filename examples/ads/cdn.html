@@ -4,43 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Preroll ad — player from a CDN</title>
-    <link rel="stylesheet" href="./dist/ads-overlay.css" />
+    <link rel="stylesheet" href="./dist/video-ads.css" />
     <link rel="stylesheet" href="./style.css" />
 
     <!-- The player comes from the public CDN; only the ads code is local,
          because @videojs/ads is not published. -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@videojs/html/cdn/video.js"></script>
     <script type="module" src="./dist/videojs-ads.js"></script>
-    <script src="./preroll.js"></script>
   </head>
   <body>
     <main>
       <h1>Player from a CDN</h1>
 
-      <div class="player">
-        <video-player>
-          <video-skin>
-            <video
-              src="https://stream.mux.com/lhnU49l1VGi3zrTAZhDm9LUUxSjpaPW9BL4jY25Kwo4/highest.mp4"
-              playsinline
-              crossorigin="anonymous"
-            ></video>
-          </video-skin>
-        </video-player>
-      </div>
+      <video-player>
+        <video-skin>
+          <video src="https://stream.mux.com/lhnU49l1VGi3zrTAZhDm9LUUxSjpaPW9BL4jY25Kwo4/highest.mp4" playsinline crossorigin="anonymous"></video>
+          <media-ads src="./ads.json"></media-ads>
+        </video-skin>
+      </video-player>
 
       <div class="meta">
         <span class="tag">jsdelivr @videojs/html + ./dist/videojs-ads.js</span>
-        <span data-ad-label></span>
       </div>
 
       <nav><a href="./">← All three forms</a></nav>
     </main>
-
-    <script type="module">
-      import { AdsOverlay, fetchAds, trackAdEvent } from './dist/videojs-ads.js';
-
-      startPreroll({ AdsOverlay, fetchAds, trackAdEvent });
-    </script>
   </body>
 </html>

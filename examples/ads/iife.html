@@ -4,45 +4,33 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Preroll ad — one classic script</title>
-    <link rel="stylesheet" href="./dist/ads-overlay.css" />
+    <link rel="stylesheet" href="./dist/video-ads.css" />
     <link rel="stylesheet" href="./style.css" />
 
-    <!-- No type="module" anywhere on this page. The bundle registers the player
-         elements and hangs its exports on a VideojsAds global.
+    <!-- No type="module" anywhere on this page.
 
          `defer` is required, not cosmetic. A classic script runs while the
          parser is still working, so without it <video-player> upgrades before
-         its <video> child exists and never finds media to attach to. A module
-         script is deferred already, which is why the other two pages omit it. -->
+         its <video> child exists and never finds media to attach to. Module
+         scripts are deferred already, which is why the other pages omit it. -->
     <script defer src="./dist/video-ads.iife.js"></script>
-    <script src="./preroll.js"></script>
   </head>
   <body>
     <main>
       <h1>One classic script</h1>
 
-      <div class="player">
-        <video-player>
-          <video-skin>
-            <video
-              src="https://stream.mux.com/lhnU49l1VGi3zrTAZhDm9LUUxSjpaPW9BL4jY25Kwo4/highest.mp4"
-              playsinline
-              crossorigin="anonymous"
-            ></video>
-          </video-skin>
-        </video-player>
-      </div>
+      <video-player>
+        <video-skin>
+          <video src="https://stream.mux.com/lhnU49l1VGi3zrTAZhDm9LUUxSjpaPW9BL4jY25Kwo4/highest.mp4" playsinline crossorigin="anonymous"></video>
+          <media-ads src="./ads.json"></media-ads>
+        </video-skin>
+      </video-player>
 
       <div class="meta">
         <span class="tag">&lt;script defer src="./dist/video-ads.iife.js"&gt;</span>
-        <span data-ad-label></span>
       </div>
 
       <nav><a href="./">← All three forms</a></nav>
     </main>
-
-    <script>
-      startPreroll(VideojsAds);
-    </script>
   </body>
 </html>

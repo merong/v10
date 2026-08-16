@@ -19,12 +19,6 @@ h1 {
   font-size: 1.25rem;
 }
 
-/* The ads overlay is absolutely positioned, so its container must establish a
-   positioning context. Wrap only the player, not the surrounding copy. */
-.player {
-  position: relative;
-}
-
 video-skin {
   display: block;
   width: 100%;

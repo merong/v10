@@ -19,6 +19,10 @@ const configs: UserConfig[] = [];
 
 // Each entry gets its own config to prevent code splitting between them.
 // This ensures each bundle is fully self-contained.
+//
+// `inlineDynamicImports` finishes the job. Without it the player's locales stay
+// behind dynamic imports and the ESM output arrives as fifty-odd chunk files,
+// which is a different thing to host than the one file this fork promises.
 for (const { src, name } of entries) {
   for (const mode of buildModes) {
     const isProd = mode === 'prod';
@@ -34,6 +38,7 @@ for (const { src, name } of entries) {
       minify: isProd,
       noExternal: [/.*/],
       outDir: 'cdn',
+      outputOptions: { inlineDynamicImports: true },
       define: {
         __DEV__: isProd ? 'false' : 'true',
       },
@@ -67,7 +72,7 @@ configs.push({
   // tsdown appends `.iife.js` for this format, so the entry name stays bare.
   outputOptions: { name: 'VideojsAds' },
   // Emitted once for the whole cdn/ directory; the ESM builds share it.
-  plugins: [copyCssPlugin({ skinsDir, outDir: 'cdn', inline: false })],
+  plugins: [copyCssPlugin({ skinsDir, outDir: 'cdn' })],
   define: {
     __DEV__: 'false',
   },
