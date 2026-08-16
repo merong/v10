@@ -1,15 +1,21 @@
 /**
- * @videojs/ads CDN bundle entry point.
+ * The ads half on its own, for a page that already loads a player.
  *
- * Self-contained bundle — includes overlay UI, JSON client, and tracker.
- * CSS is auto-injected via <style> tag on first AdsOverlay instantiation.
+ * Registers `<media-ads>`; link `ads-overlay.css` alongside it.
  *
- * Usage:
+ *   <link rel="stylesheet" href="ads-overlay.css" />
  *   <script type="module" src="videojs-ads.js"></script>
- *   <script type="module">
- *     import { AdsOverlay, fetchAds, trackAdEvent } from './videojs-ads.js';
- *   </script>
+ *
+ *   <video-player>
+ *     <video-skin>
+ *       <video src="/video.mp4" playsinline></video>
+ *       <media-ads src="/ads.json"></media-ads>
+ *     </video-skin>
+ *   </video-player>
+ *
+ * The exports below are for driving the overlay by hand instead.
  */
+import '../define/media-ads';
 
 export { fetchAds } from '../core/ads-json-client';
 export type { Ad, AdMediaType, AdPhase, AdsResponse, MediaAdsState } from '../core/ads-state';

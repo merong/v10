@@ -8,8 +8,13 @@
     <link rel="stylesheet" href="./style.css" />
 
     <!-- No type="module" anywhere on this page. The bundle registers the player
-         elements and hangs its exports on a VideojsAds global. -->
-    <script src="./dist/video-ads.iife.js"></script>
+         elements and hangs its exports on a VideojsAds global.
+
+         `defer` is required, not cosmetic. A classic script runs while the
+         parser is still working, so without it <video-player> upgrades before
+         its <video> child exists and never finds media to attach to. A module
+         script is deferred already, which is why the other two pages omit it. -->
+    <script defer src="./dist/video-ads.iife.js"></script>
     <script src="./preroll.js"></script>
   </head>
   <body>
@@ -29,7 +34,7 @@
       </div>
 
       <div class="meta">
-        <span class="tag">&lt;script src="./dist/video-ads.iife.js"&gt;</span>
+        <span class="tag">&lt;script defer src="./dist/video-ads.iife.js"&gt;</span>
         <span data-ad-label></span>
       </div>
 

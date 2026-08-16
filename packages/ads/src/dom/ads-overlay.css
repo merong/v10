@@ -1,7 +1,25 @@
 /*
  * The overlay's stylesheet. Shipped as a file rather than injected from the
  * bundle, so a page links it once alongside the player's own stylesheet.
+ *
+ * Everything here targets light DOM on purpose. A linked stylesheet does not
+ * cross a shadow boundary, so the overlay cannot live inside the skin's
+ * shadow root without giving up the single-stylesheet goal.
  */
+
+/*
+ * `<media-ads>` draws nothing itself; `display: contents` lets the overlay it
+ * holds position against the skin instead of against the marker element.
+ */
+media-ads {
+  display: contents;
+}
+
+/* Only skins that actually carry an ad marker get a positioning context. */
+video-skin:has(> media-ads),
+audio-skin:has(> media-ads) {
+  position: relative;
+}
 
 .vjs-ads-overlay {
   position: absolute;

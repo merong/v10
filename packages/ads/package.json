@@ -42,9 +42,10 @@
     "clean": "rimraf --glob dist cdn types '*.tsbuildinfo'"
   },
   "dependencies": {
+    "@videojs/element": "workspace:*",
     "@videojs/html": "workspace:*",
-    "@videojs/utils": "workspace:*",
-    "@videojs/store": "workspace:*"
+    "@videojs/store": "workspace:*",
+    "@videojs/utils": "workspace:*"
   },
   "devDependencies": {
     "jsdom": "^26.1.0",

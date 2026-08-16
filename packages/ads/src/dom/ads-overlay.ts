@@ -75,6 +75,17 @@ export class AdsOverlay {
     container.appendChild(this.#root);
   }
 
+  /**
+   * The element currently presenting the ad, or `null` between ads.
+   *
+   * A video ad reports its own progress, so an owner can drive the countdown
+   * from `timeupdate` rather than a wall clock that keeps running while the
+   * media does not. An image ad has no clock of its own and needs one supplied.
+   */
+  get adMedia(): HTMLVideoElement | HTMLImageElement | null {
+    return this.#adMedia;
+  }
+
   showAd(ad: Ad, onClick?: () => void): void {
     this.#clearMedia();
 

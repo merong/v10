@@ -210,6 +210,9 @@ importers:
 
   packages/ads:
     dependencies:
+      '@videojs/element':
+        specifier: workspace:*
+        version: link:../element
       '@videojs/html':
         specifier: workspace:*
         version: link:../html

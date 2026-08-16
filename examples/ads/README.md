@@ -27,6 +27,8 @@ npx serve examples/ads
 
 `iife.html` is the option for pages that cannot set `type="module"` at all: a CMS template that injects bare script tags, or a host stuck on older browsers. The bundle hangs its exports on a `VideojsAds` global. It is the largest of the three because an IIFE cannot code-split, so every locale is inlined.
 
+That page's script tag carries `defer`, and it has to. A classic script runs while the parser is still working, so `<video-player>` upgrades before its `<video>` child exists; the player looks for media once, finds none, and never attaches — the controls render but stay inert. Module scripts are deferred already. Putting the script at the end of `<body>` works too.
+
 ## Ad types
 
 `ads.json` holds one ad of each type the overlay supports:

@@ -21,6 +21,7 @@
 import '@videojs/html/video/player';
 import '@videojs/html/video/skin';
 import '@videojs/html/ui/poster';
+import '../define/media-ads';
 
 export { fetchAds } from '../core/ads-json-client';
 export type { Ad, AdMediaType, AdPhase, AdsResponse, MediaAdsState } from '../core/ads-state';
