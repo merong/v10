@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Run a preroll ad</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <h1>Run a preroll ad</h1>
+    <p class="lede">Adding an ad to a Video.js 10 player is one element and no JavaScript.</p>
+
+    <nav class="toc">
+      On this page
+      <ol>
+        <li><a href="#markup">The markup</a></li>
+        <li><a href="#load">Which file to load</a></li>
+        <li><a href="#data">Ad data</a></li>
+        <li><a href="#attributes">Attributes</a></li>
+        <li><a href="#styling">Styling the overlay</a></li>
+        <li><a href="#tracking">Tracking</a></li>
+        <li><a href="#manual">Driving it yourself</a></li>
+        <li><a href="#trouble">Troubleshooting</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="markup">The markup</h2>
+
+    <pre><code>&lt;link rel="stylesheet" href="/video-ads.css" /&gt;
+&lt;script defer src="/video-ads.iife.js"&gt;&lt;/script&gt;
+
+&lt;video-player&gt;
+  &lt;video-skin&gt;
+    &lt;video src="/video.mp4" playsinline&gt;&lt;/video&gt;
+    &lt;media-ads src="/ads.json"&gt;&lt;/media-ads&gt;
+  &lt;/video-skin&gt;
+&lt;/video-player&gt;</code></pre>
+
+    <p>
+      That is the whole integration. <code>&lt;media-ads&gt;</code> finds the player through context, fetches the ad
+      list, waits for the viewer's first play, runs the ad, and hands playback back.
+    </p>
+
+    <p>
+      It draws nothing where it sits, so its position among the skin's children does not matter. It adds nothing to the
+      player store either, which is what lets it drop into any v10 player rather than one built with an ads feature.
+    </p>
+
+    <h2 id="load">Which file to load</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Carries</th>
+          <th>Load with</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>video-ads.iife.js</code></td>
+          <td>Player and ads</td>
+          <td><code>&lt;script defer&gt;</code></td>
+        </tr>
+        <tr>
+          <td><code>video-ads.js</code></td>
+          <td>Player and ads</td>
+          <td><code>&lt;script type="module"&gt;</code></td>
+        </tr>
+        <tr>
+          <td><code>videojs-ads.js</code></td>
+          <td>Ads only</td>
+          <td><code>&lt;script type="module"&gt;</code>, next to a player you already load</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      Each is one file — no chunks to host alongside it. Pair any of them with <code>video-ads.css</code>, which carries
+      the overlay's styles.
+    </p>
+
+    <p class="note">
+      <strong><code>defer</code> is required on the classic script</strong>, not decoration. A classic script runs while
+      the parser is still working, so without it <code>&lt;video-player&gt;</code> upgrades before its
+      <code>&lt;video&gt;</code> child exists and never finds media to attach to — the controls render but stay inert. A
+      module script is deferred already. Putting the script at the end of <code>&lt;body&gt;</code> works too.
+    </p>
+
+    <h2 id="data">Ad data</h2>
+
+    <p><code>src</code> points at JSON shaped like this:</p>
+
+    <pre><code>{
+  "ads": [
+    {
+      "id": "video-preroll",
+      "type": "video",
+      "src": "/media/ad.mp4",
+      "mime": "video/mp4",
+      "duration": 10,
+      "skipAfter": 3,
+      "clickUrl": "https://example.com",
+      "trackingUrl": "/api/ad-events"
+    }
+  ]
+}</code></pre>
+
+    <p>The first entry in the list runs.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Required</th>
+          <th>Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>yes</td><td>Your identifier; reported with tracking events.</td></tr>
+        <tr><td><code>type</code></td><td>yes</td><td><code>video</code> or <code>image</code>.</td></tr>
+        <tr><td><code>src</code></td><td>yes</td><td>The ad's media URL.</td></tr>
+        <tr><td><code>mime</code></td><td>yes</td><td>Content type of that media.</td></tr>
+        <tr><td><code>duration</code></td><td>yes</td><td>Seconds the ad runs.</td></tr>
+        <tr><td><code>skipAfter</code></td><td>yes</td><td>Seconds until the skip button becomes usable. <code>0</code> makes it skippable immediately.</td></tr>
+        <tr><td><code>clickUrl</code></td><td>no</td><td>Opened in a new tab when the ad is clicked.</td></tr>
+        <tr><td><code>trackingUrl</code></td><td>no</td><td>Endpoint for the beacons below. Omit it and no beacons fire.</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Format</th>
+          <th><code>type</code></th>
+          <th>Rendered as</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>MP4, WebM</td><td><code>video</code></td><td><code>&lt;video&gt;</code>, autoplaying</td></tr>
+        <tr><td>WebP, GIF</td><td><code>image</code></td><td><code>&lt;img&gt;</code>, held for <code>duration</code></td></tr>
+      </tbody>
+    </table>
+
+    <p class="note">
+      A malformed entry is dropped, and a failed request yields an empty list — either way the content plays as if no ad
+      were scheduled. An ad server outage never costs you playback.
+    </p>
+
+    <h2 id="attributes">Attributes</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Attribute</th>
+          <th>Default</th>
+          <th>Effect</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>src</code></td><td>—</td><td>Where to fetch the ad list. Without it the element does nothing.</td></tr>
+        <tr><td><code>skip-label</code></td><td><code>Skip ad</code></td><td>Button text once skipping is allowed.</td></tr>
+        <tr><td><code>skip-countdown-label</code></td><td><code>Skip in {seconds}s</code></td><td>Button text before then.</td></tr>
+        <tr><td><code>timer-label</code></td><td><code>AD {elapsed} / {duration}</code></td><td>Bottom-left readout.</td></tr>
+        <tr><td><code>media-alt</code></td><td><code>Advertisement</code></td><td><code>alt</code> on an image ad.</td></tr>
+      </tbody>
+    </table>
+
+    <pre><code>&lt;media-ads
+  src="/ads.json"
+  skip-label="광고 건너뛰기"
+  skip-countdown-label="{seconds}초 후 건너뛰기"
+  timer-label="광고 {elapsed} / {duration}"
+&gt;&lt;/media-ads&gt;</code></pre>
+
+    <p>
+      An attribute cannot carry a function, so the countdown and timer take templates. <code>{seconds}</code>,
+      <code>{elapsed}</code>, and <code>{duration}</code> mark where the numbers go, and the number does not sit in the
+      same place in every language — which is why these are templates rather than a prefix and a suffix.
+    </p>
+
+    <p class="note">
+      These labels do not go through the player's translation registry. The overlay is constructed directly rather than
+      resolved from the player's locale, so you pass the strings you want.
+    </p>
+
+    <h2 id="styling">Styling the overlay</h2>
+
+    <p>
+      The overlay lives in light DOM, so your own stylesheet reaches it — load yours after
+      <code>video-ads.css</code> and override.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Class</th>
+          <th>Element</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>.vjs-ads-overlay</code></td><td>Root, covering the player at <code>z-index: 100</code></td></tr>
+        <tr><td><code>.vjs-ads-media</code></td><td>The ad's video or image, <code>object-fit: contain</code></td></tr>
+        <tr><td><code>.vjs-ads-timer</code></td><td>Bottom-left readout</td></tr>
+        <tr><td><code>.vjs-ads-skip</code></td><td>Bottom-right button</td></tr>
+      </tbody>
+    </table>
+
+    <p>State is on data attributes, so styling follows it without a class toggle:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Selector</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>.vjs-ads-overlay[data-ad-phase="playing"]</code></td><td>An ad is showing</td></tr>
+        <tr><td><code>.vjs-ads-overlay[data-ad-phase="hidden"]</code></td><td>No ad</td></tr>
+        <tr><td><code>.vjs-ads-skip[data-skip-available="true"]</code></td><td>Skip is usable</td></tr>
+        <tr><td><code>.vjs-ads-skip[data-skip-available="false"]</code></td><td>Still counting down</td></tr>
+      </tbody>
+    </table>
+
+    <pre><code>.vjs-ads-skip {
+  background: rgb(255 200 0 / 0.9);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+}
+
+.vjs-ads-skip[data-skip-available="true"]:hover {
+  background: rgb(255 220 50);
+}</code></pre>
+
+    <h2 id="tracking">Tracking</h2>
+
+    <p>
+      With a <code>trackingUrl</code> on the ad, the overlay POSTs a small JSON body at each of these moments. Without
+      one, nothing is sent.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Fired when</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>impression</code></td><td>The ad starts</td></tr>
+        <tr><td><code>click</code></td><td>The viewer clicks the ad</td></tr>
+        <tr><td><code>skip</code></td><td>The viewer skips</td></tr>
+        <tr><td><code>complete</code></td><td>The ad reaches its duration</td></tr>
+      </tbody>
+    </table>
+
+    <p>Beacons use <code>keepalive</code>, so a click that navigates away still reports.</p>
+
+    <h2 id="manual">Driving it yourself</h2>
+
+    <p>
+      When the element's lifecycle is not what you want — a midroll, an ad chosen per viewer, your own scheduling — the
+      same bundles export the pieces it is built from.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Export</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>fetchAds(url, signal?)</code></td><td>Reads a list and drops malformed entries. Resolves to <code>[]</code> on failure.</td></tr>
+        <tr><td><code>AdsOverlay</code></td><td>Draws the ad: media, timer, skip button.</td></tr>
+        <tr><td><code>trackAdEvent(url, event)</code></td><td>Fires one beacon.</td></tr>
+      </tbody>
+    </table>
+
+    <pre><code>import { AdsOverlay, fetchAds } from '/video-ads.js';
+
+const overlay = new AdsOverlay(container, {
+  labels: { skipCountdown: (seconds) =&gt; `${seconds}초 후 건너뛰기` },
+});</code></pre>
+
+    <p>
+      Constructing it yourself takes the labels as functions rather than templates. The container you pass must
+      establish a positioning context, which the element normally arranges for you.
+    </p>
+
+    <h2 id="trouble">Troubleshooting</h2>
+
+    <h3>Controls render but nothing responds</h3>
+
+    <p>
+      The player never attached to media. On a classic script this is the missing <code>defer</code> described above.
+      Confirm with <code>document.querySelector('video-player').store.target</code> — it is <code>null</code> when
+      unattached.
+    </p>
+
+    <h3>No ad, but the content plays</h3>
+
+    <p>
+      By design. Check the network tab for the <code>src</code> request: a failed fetch, invalid JSON, or an entry
+      missing a required field all reduce to an empty list, and an empty list means no ad.
+    </p>
+
+    <h3>The overlay is behind something</h3>
+
+    <p>
+      It sits at <code>z-index: 100</code> within the skin. Look for a larger <code>z-index</code> on your own overlay
+      elements rather than on the player.
+    </p>
+
+    <h3>An image ad outlasts its duration</h3>
+
+    <p>
+      Image ads have no clock of their own, so the countdown runs on an interval, and browsers throttle intervals in a
+      background tab. Video ads follow their own <code>timeupdate</code> and are unaffected.
+    </p>
+
+    <footer>
+      <p><a href="./">Configure and control the player</a> · <a href="../ads/">Runnable examples</a></p>
+    </footer>
+  </body>
+</html>

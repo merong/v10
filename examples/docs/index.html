@@ -22,6 +22,7 @@
         <li><a href="#surface">The full surface</a></li>
         <li><a href="#gotchas">Gotchas</a></li>
       </ol>
+      <p style="margin: 0.75rem 0 0">Ads have their own page: <a href="./ads.html">Run a preroll ad</a>.</p>
     </nav>
 
     <h2 id="halves">Two halves</h2>
@@ -154,6 +155,12 @@
           <td><code>&lt;media-i18n&gt;</code></td>
           <td>Wraps the player to translate control labels. Not needed for English.</td>
         </tr>
+        <tr>
+          <td><code>&lt;media-ads&gt;</code></td>
+          <td>
+            Runs a preroll before the content. See <a href="./ads.html">Run a preroll ad</a>.
+          </td>
+        </tr>
       </tbody>
     </table>
 
@@ -176,6 +183,13 @@ const store = player.store;</code></pre>
     <p>
       It is ready as soon as your script runs, provided the player script ran first. In a module script that is
       automatic, since modules are deferred and execute in order.
+    </p>
+
+    <p class="note">
+      <strong>A classic script needs <code>defer</code>.</strong> Without it the script runs while the parser is still
+      working, so <code>&lt;video-player&gt;</code> upgrades before its <code>&lt;video&gt;</code> child exists and
+      never attaches to it. The store is there and the controls render, but <code>store.target</code> is
+      <code>null</code> and nothing responds.
     </p>
 
     <p class="note">
@@ -371,7 +385,7 @@ queueMicrotask(() =&gt; store.volume); // 0.5</code></pre>
         The tables above were read off a running player rather than transcribed, so they describe the build in this
         repository. Print <code>Object.keys(store)</code> to check yours.
       </p>
-      <p><a href="../ads/">Ad examples</a> · <a href="https://videojs.com/">videojs.com</a></p>
+      <p><a href="./ads.html">Run a preroll ad</a> · <a href="../ads/">Runnable examples</a> · <a href="https://videojs.com/">videojs.com</a></p>
     </footer>
   </body>
 </html>
