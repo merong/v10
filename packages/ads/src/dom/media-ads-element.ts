@@ -94,13 +94,18 @@ export class MediaAdsElement extends MediaElement {
     'src' | 'skipLabel' | 'skipCountdownLabel' | 'timerLabel' | 'mediaAlt' | 'tickInterval' | 'maxWait'
   >;
 
-  src: string | undefined;
-  skipLabel: string | undefined;
-  skipCountdownLabel: string | undefined;
-  timerLabel: string | undefined;
-  mediaAlt: string | undefined;
-  tickInterval: number | undefined;
-  maxWait: number | undefined;
+  // `declare`, not plain fields. ReactiveElement installs the reactive
+  // accessors on the prototype, and under ES2022 field semantics a declared
+  // field would define an own property over them — the value would still land,
+  // but nothing would ever call `requestUpdate`, so a source set after the
+  // element upgraded would never be acted on.
+  declare src: string | undefined;
+  declare skipLabel: string | undefined;
+  declare skipCountdownLabel: string | undefined;
+  declare timerLabel: string | undefined;
+  declare mediaAlt: string | undefined;
+  declare tickInterval: number | undefined;
+  declare maxWait: number | undefined;
 
   readonly #player = new ContextConsumer(this, { context: playerContext, subscribe: true });
   readonly #media = new ContextConsumer(this, {
@@ -219,6 +224,10 @@ export class MediaAdsElement extends MediaElement {
 
     this.#armed = media;
     media.addEventListener('play', () => void this.#start(), { once: true, signal: this.#abort.signal });
+
+    // Already running. A page that decides on ads after load sets `src` once
+    // the content is under way, and the play this was waiting for is behind it.
+    if (!media.paused) void this.#start();
   }
 
   async #start(): Promise<void> {

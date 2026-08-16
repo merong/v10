@@ -42,6 +42,11 @@
     </p>
 
     <p>
+      The source does not have to be in the markup. A page that decides on ads later can set
+      <code>src</code> whenever the answer arrives — if the content is already playing by then, the ad starts at once.
+    </p>
+
+    <p>
       It draws nothing where it sits, so its position among the skin's children does not matter. It adds nothing to the
       player store either, which is what lets it drop into any v10 player rather than one built with an ads feature.
     </p>
@@ -158,7 +163,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>src</code></td><td>—</td><td>Where to fetch the ad list. Without it the element does nothing.</td></tr>
+        <tr><td><code>src</code></td><td>—</td><td>Where to fetch the ad list. Without it the element does nothing. It may be set at any time, including after playback has started.</td></tr>
         <tr><td><code>skip-label</code></td><td><code>Skip ad</code></td><td>Button text once skipping is allowed.</td></tr>
         <tr><td><code>skip-countdown-label</code></td><td><code>Skip in {seconds}s</code></td><td>Button text before then.</td></tr>
         <tr><td><code>timer-label</code></td><td><code>AD {elapsed} / {duration}</code></td><td>Bottom-left readout.</td></tr>

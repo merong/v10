@@ -39,6 +39,24 @@ describe('MediaAdsElement', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('requests ads when the source arrives after the element upgraded', async () => {
+    // A page that decides on ads after load sets the source late. That only
+    // works while the reactive accessors are reachable: declaring the
+    // properties as plain class fields defines own properties over them, and
+    // the value would land without anything scheduling an update.
+    const fetchSpy = vi.fn((_input: RequestInfo | URL) => Promise.resolve(new Response('{"ads":[]}')));
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const el = mount();
+    expect(Object.hasOwn(el, 'src')).toBe(false);
+
+    el.src = '/ads.json';
+    await el.updateComplete;
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain('/ads.json');
+  });
+
   describe('timing', () => {
     it('defaults the tick interval and the wall-clock allowance', () => {
       const el = mount({ src: '/ads.json' });
