@@ -1,5 +1,7 @@
 # Video.js 10 agent guide
 
+This repository is a fork. Read `FORK.md` first — where it disagrees with this file, it wins.
+
 Use this file for durable repository rules. Prefer retrieval-led reasoning: inspect the relevant code, tests, package manifest, and nearest `AGENTS.md` before relying on model memory or these summaries.
 
 ## Sources of truth
