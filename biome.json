@@ -194,7 +194,6 @@
       "!**/build/agents",
       "!**/dist",
       "!**/examples",
-      "!**/packages/ads/cdn",
       "!site/scripts/api-docs-builder/src/tests/fixtures",
       "!**/packages/html/cdn",
       "!**/styles/vjs.css",

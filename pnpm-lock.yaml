@@ -128,9 +128,6 @@ importers:
 
   apps/sandbox:
     dependencies:
-      '@videojs/ads':
-        specifier: workspace:*
-        version: link:../../packages/ads
       '@videojs/core':
         specifier: workspace:*
         version: link:../../packages/core

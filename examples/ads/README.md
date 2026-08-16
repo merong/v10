@@ -87,7 +87,7 @@ The ad timer runs on `requestAnimationFrame`, so it stalls while the tab is in t
 ## Related
 
 - `apps/sandbox/templates/html-video-ads/` — the same flow with a panel that highlights each phase as it runs. Better for understanding the lifecycle; this example is the smaller starting point.
-- [Load the player with a script tag](../../site/src/content/docs/how-to/load-with-a-script-tag.mdx) — the same three forms for the player on its own.
+- [Configure and control the player](../docs/) — what you can set on the player and what you can call on it.
 - `packages/ads/README.md` — the package itself.
 
 ## Notes

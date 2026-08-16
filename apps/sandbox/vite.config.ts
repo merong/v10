@@ -134,7 +134,6 @@ function serveAppShell(): Plugin {
 
 export default defineConfig({
   root: 'src',
-  publicDir: resolve(__dirname, 'public'),
   appType: 'mpa',
   plugins: [sandboxTemplateSyncPlugin(), cdnSandboxI18nPlugin(), tailwindcss(), react(), serveAppShell()],
   resolve: {
@@ -149,7 +148,6 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom'],
     exclude: [
-      '@videojs/ads',
       '@videojs/core',
       '@videojs/html',
       '@videojs/icons',

@@ -170,3 +170,6 @@ packages/spf/test-fixtures/streams/*
 
 # Local archive for reference (not committed)
 /.archive/
+
+# Ads CDN bundles are produced by `pnpm -F @videojs/ads build:cdn`.
+/packages/ads/cdn/

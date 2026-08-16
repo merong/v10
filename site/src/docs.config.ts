@@ -56,7 +56,6 @@ export const sidebar: Sidebar = [
       { slug: 'how-to/customize-skins' },
       { slug: 'how-to/build-your-own-component' },
       { slug: 'how-to/video-ads', sidebarLabel: 'Add preroll ads' },
-      { slug: 'how-to/load-with-a-script-tag', sidebarLabel: 'Load with a script tag', frameworks: ['html'] },
       { slug: 'how-to/self-host-the-player', frameworks: ['html'] },
       {
         sidebarLabel: 'Internationalization',

@@ -3,7 +3,6 @@ export const PLATFORMS = ['html', 'react', 'cdn'] as const;
 export const STYLINGS = ['css', 'tailwind'] as const;
 export const PRESETS = [
   'video',
-  'video-ads',
   'hlsjs-video',
   'native-hls-video',
   'mux-video',
