@@ -52,8 +52,13 @@ for (const entry of await readdir(source, { withFileTypes: true, recursive: true
   if (!entry.isFile()) continue;
   if (!entry.name.endsWith('.js') && !entry.name.endsWith('.css')) continue;
 
-  // The stylesheet sits under dom/ in the build output; the example wants a
-  // flat directory, and the name is unambiguous on its own.
+  // Only the top-level stylesheet is one a page links. The nested ones are
+  // partials it already carries inlined, and copying them into a flat
+  // directory would put a second, redundant CSS file beside the real one.
+  if (entry.name.endsWith('.css') && entry.parentPath !== source) continue;
+
+  // JS chunks keep flowing through: the ESM bundle resolves its locale chunks
+  // relative to itself, and the example wants them beside it.
   await cp(join(entry.parentPath, entry.name), join(target, entry.name));
   copied += 1;
 }
