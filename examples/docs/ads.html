@@ -163,6 +163,8 @@
         <tr><td><code>skip-countdown-label</code></td><td><code>Skip in {seconds}s</code></td><td>Button text before then.</td></tr>
         <tr><td><code>timer-label</code></td><td><code>AD {elapsed} / {duration}</code></td><td>Bottom-left readout.</td></tr>
         <tr><td><code>media-alt</code></td><td><code>Advertisement</code></td><td><code>alt</code> on an image ad.</td></tr>
+        <tr><td><code>tick-interval</code></td><td><code>250</code></td><td>Countdown refresh rate, in milliseconds.</td></tr>
+        <tr><td><code>max-wait</code></td><td><code>5</code></td><td>Extra wall-clock seconds allowed past <code>duration</code> before the ad is abandoned.</td></tr>
       </tbody>
     </table>
 
@@ -253,6 +255,7 @@
         <tr><td><code>click</code></td><td>The viewer clicks the ad</td></tr>
         <tr><td><code>skip</code></td><td>The viewer skips</td></tr>
         <tr><td><code>complete</code></td><td>The ad reaches its duration</td></tr>
+        <tr><td><code>error</code></td><td>The ad's media failed to load or play</td></tr>
       </tbody>
     </table>
 
@@ -314,11 +317,21 @@ const overlay = new AdsOverlay(container, {
       elements rather than on the player.
     </p>
 
-    <h3>An image ad outlasts its duration</h3>
+    <h3>An ad outlasts its duration</h3>
 
     <p>
-      Image ads have no clock of their own, so the countdown runs on an interval, and browsers throttle intervals in a
-      background tab. Video ads follow their own <code>timeupdate</code> and are unaffected.
+      In a background tab the browser throttles the wall-clock timer that backs the countdown, so an ad with no
+      playback progress of its own finishes late. A playing video ad is unaffected. <code>tick-interval</code> does
+      not help here — the throttle applies whatever the interval asks for.
+    </p>
+
+    <h3>The ad never ends</h3>
+
+    <p>
+      It should not be possible: the wall clock ends the ad at <code>duration</code> plus <code>max-wait</code> even
+      when the ad's media reports nothing, and a media error ends it at once. If you see it, check that the page is
+      loading a build that includes both — earlier builds drove the countdown from <code>timeupdate</code> alone and
+      an unreachable ad URL would hold the content indefinitely.
     </p>
 
     <footer>

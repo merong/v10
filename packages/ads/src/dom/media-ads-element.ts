@@ -11,8 +11,30 @@ import type { Ad } from '../core/ads-state';
 import { trackAdEvent } from '../core/ads-tracker';
 import { AdsOverlay, type AdsOverlayLabels } from './ads-overlay';
 
-/** How often the countdown refreshes for media that reports no progress of its own. */
-const IMAGE_TICK_MS = 250;
+/** How often the countdown refreshes, in milliseconds. */
+const DEFAULT_TICK_INTERVAL_MS = 250;
+
+/**
+ * Extra wall-clock seconds allowed past an ad's declared duration before it is
+ * abandoned. It only matters when the ad's own media stops reporting progress —
+ * a stalled video would otherwise hold the content forever.
+ */
+const DEFAULT_MAX_WAIT_SECONDS = 5;
+
+interface AdTiming {
+  tickIntervalMs: number;
+  maxWaitSeconds: number;
+}
+
+function positiveNumber(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function nonNegativeNumber(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
 
 /**
  * All this element needs from the player store. Narrow on purpose: asking for
@@ -66,13 +88,19 @@ export class MediaAdsElement extends MediaElement {
     skipCountdownLabel: { type: String, attribute: 'skip-countdown-label' },
     timerLabel: { type: String, attribute: 'timer-label' },
     mediaAlt: { type: String, attribute: 'media-alt' },
-  } satisfies PropertyDeclarationMap<'src' | 'skipLabel' | 'skipCountdownLabel' | 'timerLabel' | 'mediaAlt'>;
+    tickInterval: { type: Number, attribute: 'tick-interval' },
+    maxWait: { type: Number, attribute: 'max-wait' },
+  } satisfies PropertyDeclarationMap<
+    'src' | 'skipLabel' | 'skipCountdownLabel' | 'timerLabel' | 'mediaAlt' | 'tickInterval' | 'maxWait'
+  >;
 
   src: string | undefined;
   skipLabel: string | undefined;
   skipCountdownLabel: string | undefined;
   timerLabel: string | undefined;
   mediaAlt: string | undefined;
+  tickInterval: number | undefined;
+  maxWait: number | undefined;
 
   readonly #player = new ContextConsumer(this, { context: playerContext, subscribe: true });
   readonly #media = new ContextConsumer(this, {
@@ -110,6 +138,21 @@ export class MediaAdsElement extends MediaElement {
     if (timer) labels.timer = (elapsed, duration) => fillTemplate(timer, { elapsed, duration });
 
     return labels;
+  }
+
+  /**
+   * Timer settings, with anything unusable falling back to the default. A zero
+   * or negative interval would spin, and a non-numeric one would stop the
+   * countdown advancing at all — neither is worth honouring.
+   *
+   * `tickInterval` is milliseconds, matching the timer it drives. `maxWait` is
+   * seconds, matching the ad durations it is compared against.
+   */
+  resolveTiming(): AdTiming {
+    return {
+      tickIntervalMs: positiveNumber(this.tickInterval, DEFAULT_TICK_INTERVAL_MS),
+      maxWaitSeconds: nonNegativeNumber(this.maxWait, DEFAULT_MAX_WAIT_SECONDS),
+    };
   }
 
   override connectedCallback(): void {
@@ -207,31 +250,53 @@ export class MediaAdsElement extends MediaElement {
   }
 
   /**
-   * A video ad reports its own progress, so the countdown follows the media and
-   * survives a backgrounded tab. An image ad has no clock, so it gets an
-   * interval — and an interval is throttled rather than stopped when hidden.
+   * Runs the countdown and guarantees the ad ends.
+   *
+   * A video ad reports its own progress, which is the honest thing to show — it
+   * tracks what the viewer actually saw. But it cannot be the only clock: media
+   * that fails to load, stalls, or is refused playback never fires `timeupdate`
+   * at all, and an ad driven solely by those events holds the content forever.
+   *
+   * So the wall clock always runs underneath. It supplies the elapsed time when
+   * the media reports none, and it ends the ad regardless once the declared
+   * duration plus `maxWait` has passed.
    */
   #runTimer(ad: Ad): void {
     const media = this.#overlay?.adMedia;
     const video = media instanceof HTMLVideoElement ? media : null;
+    const { tickIntervalMs, maxWaitSeconds } = this.resolveTiming();
+    const startedAt = Date.now();
 
-    const update = (elapsed: number): void => {
+    const render = (elapsed: number): void => {
       this.#overlay?.updateTimer(elapsed, ad.duration);
       const canSkip = ad.skipAfter > 0 && elapsed >= ad.skipAfter;
       this.#overlay?.updateSkip(canSkip, Math.max(0, Math.ceil(ad.skipAfter - elapsed)));
-      if (elapsed >= ad.duration) this.#finish(ad, 'complete');
     };
 
-    update(0);
+    const tick = (): void => {
+      const wall = (Date.now() - startedAt) / 1000;
+      // Media progress wins while there is any, so the countdown reflects the
+      // ad rather than the clock. At zero it has not started, and wall time is
+      // the only honest answer.
+      const elapsed = video && video.currentTime > 0 ? video.currentTime : wall;
+
+      render(elapsed);
+
+      if (elapsed >= ad.duration || wall >= ad.duration + maxWaitSeconds) {
+        this.#finish(ad, 'complete');
+      }
+    };
+
+    render(0);
 
     if (video) {
-      video.addEventListener('timeupdate', () => update(video.currentTime));
+      video.addEventListener('timeupdate', tick);
       video.addEventListener('ended', () => this.#finish(ad, 'complete'));
-      return;
+      // Nothing is coming; do not make the viewer wait out the duration.
+      video.addEventListener('error', () => this.#finish(ad, 'error'));
     }
 
-    const startedAt = Date.now();
-    this.#timer = setInterval(() => update((Date.now() - startedAt) / 1000), IMAGE_TICK_MS);
+    this.#timer = setInterval(tick, tickIntervalMs);
   }
 
   #stopTimer(): void {
@@ -240,7 +305,7 @@ export class MediaAdsElement extends MediaElement {
     this.#timer = null;
   }
 
-  #finish(ad: Ad, reason: 'skip' | 'complete'): void {
+  #finish(ad: Ad, reason: 'skip' | 'complete' | 'error'): void {
     if (!this.#overlay) return;
 
     this.#stopTimer();

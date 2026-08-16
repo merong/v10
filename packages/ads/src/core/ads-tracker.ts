@@ -1,6 +1,6 @@
 export function trackAdEvent(
   url: string | undefined,
-  event: 'impression' | 'complete' | 'skip' | 'click',
+  event: 'impression' | 'complete' | 'skip' | 'click' | 'error',
   extra?: Record<string, unknown>
 ): void {
   if (!url) return;

@@ -39,6 +39,35 @@ describe('MediaAdsElement', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  describe('timing', () => {
+    it('defaults the tick interval and the wall-clock allowance', () => {
+      const el = mount({ src: '/ads.json' });
+
+      expect(el.tickInterval).toBeUndefined();
+      expect(el.maxWait).toBeUndefined();
+      expect(el.resolveTiming()).toEqual({ tickIntervalMs: 250, maxWaitSeconds: 5 });
+    });
+
+    it('reads both from attributes', () => {
+      const el = mount({ src: '/ads.json', 'tick-interval': '100', 'max-wait': '2' });
+
+      expect(el.resolveTiming()).toEqual({ tickIntervalMs: 100, maxWaitSeconds: 2 });
+    });
+
+    it('ignores values that cannot drive a timer', () => {
+      // A zero or negative interval would spin; a missing number would produce NaN
+      // and stop the countdown advancing at all.
+      for (const bad of ['0', '-1', 'soon']) {
+        expect(mount({ src: '/ads.json', 'tick-interval': bad }).resolveTiming().tickIntervalMs).toBe(250);
+      }
+    });
+
+    it('allows a zero wall-clock allowance', () => {
+      // Zero is meaningful here: give up the moment the declared duration passes.
+      expect(mount({ src: '/ads.json', 'max-wait': '0' }).resolveTiming().maxWaitSeconds).toBe(0);
+    });
+  });
+
   describe('labels', () => {
     it('passes attribute labels through to the overlay', () => {
       const el = mount({

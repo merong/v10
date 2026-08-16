@@ -84,9 +84,24 @@ The countdown and timer are functions rather than templates because the number d
 
 These labels do not go through the player's translation registry — an overlay is constructed directly, not resolved from the player's locale, so you pass the strings you want.
 
+## Timing
+
+The countdown follows the ad's own playback when it reports any, and a wall clock underneath guarantees the ad ends even when it does not — media that fails to load, stalls, or is refused playback would otherwise hold the content forever.
+
+| Attribute | Default | Meaning |
+| --- | --- | --- |
+| `tick-interval` | `250` | How often the countdown refreshes, in milliseconds. |
+| `max-wait` | `5` | Extra wall-clock seconds allowed past `duration` before the ad is abandoned, in seconds. |
+
+```html
+<media-ads src="/ads.json" tick-interval="100" max-wait="2"></media-ads>
+```
+
+An ad whose media errors is dropped immediately rather than waiting out either clock, and reports a `error` tracking event rather than `complete`.
+
 ## Known limits
 
-An image ad's countdown runs on an interval, which browsers throttle in a background tab — the ad then finishes later than its `duration` says. A video ad is unaffected: its countdown follows the ad's own `timeupdate`.
+In a background tab the browser throttles the wall-clock timer, so an ad with no media progress of its own finishes late. A playing video ad is unaffected — its countdown follows `timeupdate`.
 
 ## Related
 
