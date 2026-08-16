@@ -148,8 +148,8 @@
           <td>Chapter markers on the time slider.</td>
         </tr>
         <tr>
-          <td><code>&lt;track kind="metadata"&gt;</code></td>
-          <td>Storyboard thumbnails shown while scrubbing.</td>
+          <td><code>&lt;track kind="metadata" label="thumbnails"&gt;</code></td>
+          <td>Storyboard thumbnails shown while scrubbing. The label is what identifies it — a metadata track by any other label is ignored.</td>
         </tr>
         <tr>
           <td><code>&lt;media-i18n&gt;</code></td>
@@ -345,18 +345,25 @@ console.log(Object.keys(store));</code></pre>
 
     <h2 id="gotchas">Gotchas</h2>
 
-    <h3>Writes land on the next microtask</h3>
-
-    <p>Reading straight back gives you the old value:</p>
-
-    <pre><code>store.setVolume(0.5);
-store.volume;                       // still 1
-
-queueMicrotask(() =&gt; store.volume); // 0.5</code></pre>
+    <h3>Not every write reads back</h3>
 
     <p>
-      Several actions in one tick collapse into a single <code>subscribe</code> callback, which is what you want for
-      rendering — but it means you cannot treat an action as synchronous.
+      Some state is the store's own and updates immediately. Anything the media owns — volume, muted — is set on the
+      media element and only reaches the store when the browser reports it back, a turn or more later:
+    </p>
+
+    <pre><code>store.setContentTitle('Episode 2');
+store.contentTitle;                  // 'Episode 2', immediately
+
+store.setVolume(0.5);
+store.volume;                        // still 1
+queueMicrotask(() =&gt; store.volume);  // still 1 — a microtask is not enough
+setTimeout(() =&gt; store.volume);      // 0.5</code></pre>
+
+    <p>
+      Rather than learning which is which, treat no action as synchronous and read through <code>subscribe</code>.
+      Notifications are batched: several actions in one tick produce one callback, which is what you want for
+      rendering.
     </p>
 
     <h3>Media state starts empty</h3>
