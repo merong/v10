@@ -1,23 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Preroll ad — one classic script</title>
+    <title>프리롤 광고 — 클래식 스크립트 하나</title>
     <link rel="stylesheet" href="./dist/video-ads.css" />
     <link rel="stylesheet" href="./style.css" />
 
-    <!-- No type="module" anywhere on this page.
+    <!-- 이 페이지에는 type="module"이 하나도 없습니다.
 
-         `defer` is required, not cosmetic. A classic script runs while the
-         parser is still working, so without it <video-player> upgrades before
-         its <video> child exists and never finds media to attach to. Module
-         scripts are deferred already, which is why the other pages omit it. -->
+         `defer`는 장식이 아니라 필수입니다. 클래식 스크립트는 파서가 아직
+         문서를 읽는 중에 실행되므로, defer가 없으면 <video-player>가 자식
+         <video>가 생기기 전에 업그레이드되어 붙을 미디어를 찾지 못합니다.
+         모듈 스크립트는 이미 defer 상태이며, 다른 페이지들이 이 속성을
+         쓰지 않는 이유입니다. -->
     <script defer src="./dist/video-ads.iife.js"></script>
   </head>
   <body>
     <main>
-      <h1>One classic script</h1>
+      <h1>클래식 스크립트 하나</h1>
 
       <video-player>
         <video-skin>
@@ -30,7 +31,7 @@
         <span class="tag">&lt;script defer src="./dist/video-ads.iife.js"&gt;</span>
       </div>
 
-      <nav><a href="./">← All three forms</a></nav>
+      <nav><a href="./">← 세 가지 방식 전체</a></nav>
     </main>
   </body>
 </html>

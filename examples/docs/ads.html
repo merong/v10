@@ -1,30 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Run a preroll ad</title>
+    <title>프리롤 광고 실행하기</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <h1>Run a preroll ad</h1>
-    <p class="lede">Adding an ad to a Video.js 10 player is one element and no JavaScript.</p>
+    <h1>프리롤 광고 실행하기</h1>
+    <p class="lede">Video.js 10 플레이어에 광고를 붙이는 데 필요한 것은 엘리먼트 하나뿐, JavaScript는 없습니다.</p>
 
     <nav class="toc">
-      On this page
+      이 문서의 목차
       <ol>
-        <li><a href="#markup">The markup</a></li>
-        <li><a href="#load">Which file to load</a></li>
-        <li><a href="#data">Ad data</a></li>
-        <li><a href="#attributes">Attributes</a></li>
-        <li><a href="#styling">Styling the overlay</a></li>
-        <li><a href="#tracking">Tracking</a></li>
-        <li><a href="#manual">Driving it yourself</a></li>
-        <li><a href="#trouble">Troubleshooting</a></li>
+        <li><a href="#markup">마크업</a></li>
+        <li><a href="#load">어떤 파일을 불러올까</a></li>
+        <li><a href="#data">광고 데이터</a></li>
+        <li><a href="#attributes">속성</a></li>
+        <li><a href="#styling">오버레이 스타일링</a></li>
+        <li><a href="#tracking">트래킹</a></li>
+        <li><a href="#manual">직접 제어하기</a></li>
+        <li><a href="#trouble">문제 해결</a></li>
       </ol>
     </nav>
 
-    <h2 id="markup">The markup</h2>
+    <h2 id="markup">마크업</h2>
 
     <pre><code>&lt;link rel="stylesheet" href="/video-ads.css" /&gt;
 &lt;script defer src="/video-ads.iife.js"&gt;&lt;/script&gt;
@@ -37,64 +37,65 @@
 &lt;/video-player&gt;</code></pre>
 
     <p>
-      That is the whole integration. <code>&lt;media-ads&gt;</code> finds the player through context, fetches the ad
-      list, waits for the viewer's first play, runs the ad, and hands playback back.
+      연동은 이것이 전부입니다. <code>&lt;media-ads&gt;</code>는 컨텍스트로 플레이어를 찾고, 광고 목록을 받아오고,
+      시청자의 첫 재생을 기다렸다가 광고를 실행한 뒤 재생권을 본편에 돌려줍니다.
     </p>
 
     <p>
-      The source does not have to be in the markup. A page that decides on ads later can set
-      <code>src</code> whenever the answer arrives — if the content is already playing by then, the ad starts at once.
+      소스가 반드시 마크업에 있어야 하는 것은 아닙니다. 광고 여부를 나중에 정하는 페이지는 답이 오는 시점에
+      <code>src</code>를 설정하면 됩니다 — 그때 본편이 이미 재생 중이라면 광고가 곧바로 시작됩니다.
     </p>
 
     <p>
-      It draws nothing where it sits, so its position among the skin's children does not matter. It adds nothing to the
-      player store either, which is what lets it drop into any v10 player rather than one built with an ads feature.
+      이 엘리먼트는 놓인 자리에 아무것도 그리지 않으므로, 스킨의 자식들 중 어디에 두든 상관없습니다. 플레이어 스토어에
+      더하는 것도 없습니다. 덕분에 광고 기능을 넣어 빌드한 플레이어가 아니라 어떤 v10 플레이어에든 그대로 얹을 수
+      있습니다.
     </p>
 
-    <h2 id="load">Which file to load</h2>
+    <h2 id="load">어떤 파일을 불러올까</h2>
 
     <table>
       <thead>
         <tr>
-          <th>File</th>
-          <th>Carries</th>
-          <th>Load with</th>
+          <th>파일</th>
+          <th>담고 있는 것</th>
+          <th>불러오는 방법</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><code>video-ads.iife.js</code></td>
-          <td>Player and ads</td>
+          <td>플레이어와 광고</td>
           <td><code>&lt;script defer&gt;</code></td>
         </tr>
         <tr>
           <td><code>video-ads.js</code></td>
-          <td>Player and ads</td>
+          <td>플레이어와 광고</td>
           <td><code>&lt;script type="module"&gt;</code></td>
         </tr>
         <tr>
           <td><code>videojs-ads.js</code></td>
-          <td>Ads only</td>
-          <td><code>&lt;script type="module"&gt;</code>, next to a player you already load</td>
+          <td>광고만</td>
+          <td><code>&lt;script type="module"&gt;</code>, 이미 불러오고 있는 플레이어 옆에</td>
         </tr>
       </tbody>
     </table>
 
     <p>
-      Each is one file — no chunks to host alongside it. Pair any of them with <code>video-ads.css</code>, which carries
-      the overlay's styles.
+      셋 다 파일 하나로 끝나며, 옆에 함께 배포해야 할 청크가 없습니다. 어느 것을 쓰든 오버레이 스타일을 담은
+      <code>video-ads.css</code>와 짝지으면 됩니다.
     </p>
 
     <p class="note">
-      <strong><code>defer</code> is required on the classic script</strong>, not decoration. A classic script runs while
-      the parser is still working, so without it <code>&lt;video-player&gt;</code> upgrades before its
-      <code>&lt;video&gt;</code> child exists and never finds media to attach to — the controls render but stay inert. A
-      module script is deferred already. Putting the script at the end of <code>&lt;body&gt;</code> works too.
+      <strong>클래식 스크립트에 <code>defer</code>는 필수</strong>이며 장식이 아닙니다. 클래식 스크립트는 파서가 아직
+      문서를 읽는 중에 실행되므로, <code>defer</code>가 없으면 <code>&lt;video-player&gt;</code>가 자식
+      <code>&lt;video&gt;</code>가 생기기 전에 업그레이드되어 붙을 미디어를 찾지 못합니다 — 컨트롤은 그려지지만 반응하지
+      않습니다. 모듈 스크립트는 이미 defer 상태입니다. 스크립트를 <code>&lt;body&gt;</code> 끝에 두는 방법도 통합니다.
     </p>
 
-    <h2 id="data">Ad data</h2>
+    <h2 id="data">광고 데이터</h2>
 
-    <p><code>src</code> points at JSON shaped like this:</p>
+    <p><code>src</code>가 가리키는 JSON의 형태입니다.</p>
 
     <pre><code>{
   "ads": [
@@ -111,65 +112,65 @@
   ]
 }</code></pre>
 
-    <p>The first entry in the list runs.</p>
+    <p>목록의 첫 항목이 실행됩니다.</p>
 
     <table>
       <thead>
         <tr>
-          <th>Field</th>
-          <th>Required</th>
-          <th>Meaning</th>
+          <th>필드</th>
+          <th>필수</th>
+          <th>의미</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>id</code></td><td>yes</td><td>Your identifier; reported with tracking events.</td></tr>
-        <tr><td><code>type</code></td><td>yes</td><td><code>video</code> or <code>image</code>.</td></tr>
-        <tr><td><code>src</code></td><td>yes</td><td>The ad's media URL.</td></tr>
-        <tr><td><code>mime</code></td><td>yes</td><td>Content type of that media.</td></tr>
-        <tr><td><code>duration</code></td><td>yes</td><td>Seconds the ad runs.</td></tr>
-        <tr><td><code>skipAfter</code></td><td>yes</td><td>Seconds until the skip button becomes usable. <code>0</code> makes it skippable immediately.</td></tr>
-        <tr><td><code>clickUrl</code></td><td>no</td><td>Opened in a new tab when the ad is clicked.</td></tr>
-        <tr><td><code>trackingUrl</code></td><td>no</td><td>Endpoint for the beacons below. Omit it and no beacons fire.</td></tr>
+        <tr><td><code>id</code></td><td>예</td><td>여러분의 식별자. 트래킹 이벤트에 함께 보고됩니다.</td></tr>
+        <tr><td><code>type</code></td><td>예</td><td><code>video</code> 또는 <code>image</code>.</td></tr>
+        <tr><td><code>src</code></td><td>예</td><td>광고 미디어의 URL.</td></tr>
+        <tr><td><code>mime</code></td><td>예</td><td>그 미디어의 콘텐츠 타입.</td></tr>
+        <tr><td><code>duration</code></td><td>예</td><td>광고가 재생되는 초.</td></tr>
+        <tr><td><code>skipAfter</code></td><td>예</td><td>건너뛰기 버튼이 활성화되기까지의 초. <code>0</code>이면 즉시 건너뛸 수 있습니다.</td></tr>
+        <tr><td><code>clickUrl</code></td><td>아니오</td><td>광고를 클릭하면 새 탭에서 엽니다.</td></tr>
+        <tr><td><code>trackingUrl</code></td><td>아니오</td><td>아래 비콘을 받을 엔드포인트. 생략하면 비콘을 보내지 않습니다.</td></tr>
       </tbody>
     </table>
 
     <table>
       <thead>
         <tr>
-          <th>Format</th>
+          <th>포맷</th>
           <th><code>type</code></th>
-          <th>Rendered as</th>
+          <th>렌더링</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td>MP4, WebM</td><td><code>video</code></td><td><code>&lt;video&gt;</code>, autoplaying</td></tr>
-        <tr><td>WebP, GIF</td><td><code>image</code></td><td><code>&lt;img&gt;</code>, held for <code>duration</code></td></tr>
+        <tr><td>MP4, WebM</td><td><code>video</code></td><td><code>&lt;video&gt;</code>, 자동 재생</td></tr>
+        <tr><td>WebP, GIF</td><td><code>image</code></td><td><code>&lt;img&gt;</code>, <code>duration</code> 동안 유지</td></tr>
       </tbody>
     </table>
 
     <p class="note">
-      A malformed entry is dropped, and a failed request yields an empty list — either way the content plays as if no ad
-      were scheduled. An ad server outage never costs you playback.
+      형식이 잘못된 항목은 버려지고, 요청이 실패하면 빈 목록이 됩니다 — 어느 쪽이든 예정된 광고가 없었던 것처럼 본편이
+      재생됩니다. 광고 서버 장애가 재생을 막는 일은 없습니다.
     </p>
 
-    <h2 id="attributes">Attributes</h2>
+    <h2 id="attributes">속성</h2>
 
     <table>
       <thead>
         <tr>
-          <th>Attribute</th>
-          <th>Default</th>
-          <th>Effect</th>
+          <th>속성</th>
+          <th>기본값</th>
+          <th>효과</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>src</code></td><td>—</td><td>Where to fetch the ad list. Without it the element does nothing. It may be set at any time, including after playback has started.</td></tr>
-        <tr><td><code>skip-label</code></td><td><code>Skip ad</code></td><td>Button text once skipping is allowed.</td></tr>
-        <tr><td><code>skip-countdown-label</code></td><td><code>Skip in {seconds}s</code></td><td>Button text before then.</td></tr>
-        <tr><td><code>timer-label</code></td><td><code>AD {elapsed} / {duration}</code></td><td>Bottom-left readout.</td></tr>
-        <tr><td><code>media-alt</code></td><td><code>Advertisement</code></td><td><code>alt</code> on an image ad.</td></tr>
-        <tr><td><code>tick-interval</code></td><td><code>250</code></td><td>Countdown refresh rate, in milliseconds.</td></tr>
-        <tr><td><code>max-wait</code></td><td><code>5</code></td><td>Extra wall-clock seconds allowed past <code>duration</code> before the ad is abandoned.</td></tr>
+        <tr><td><code>src</code></td><td>—</td><td>광고 목록을 받아올 위치. 없으면 엘리먼트는 아무 일도 하지 않습니다. 재생이 시작된 뒤를 포함해 언제든 설정할 수 있습니다.</td></tr>
+        <tr><td><code>skip-label</code></td><td><code>Skip ad</code></td><td>건너뛰기가 가능해진 뒤의 버튼 문구.</td></tr>
+        <tr><td><code>skip-countdown-label</code></td><td><code>Skip in {seconds}s</code></td><td>그 전까지의 버튼 문구.</td></tr>
+        <tr><td><code>timer-label</code></td><td><code>AD {elapsed} / {duration}</code></td><td>좌측 하단 표시.</td></tr>
+        <tr><td><code>media-alt</code></td><td><code>Advertisement</code></td><td>이미지 광고의 <code>alt</code>.</td></tr>
+        <tr><td><code>tick-interval</code></td><td><code>250</code></td><td>카운트다운 갱신 주기(밀리초).</td></tr>
+        <tr><td><code>max-wait</code></td><td><code>5</code></td><td><code>duration</code>을 넘겨 광고를 포기하기까지 허용하는 추가 실시간 초.</td></tr>
       </tbody>
     </table>
 
@@ -181,52 +182,52 @@
 &gt;&lt;/media-ads&gt;</code></pre>
 
     <p>
-      An attribute cannot carry a function, so the countdown and timer take templates. <code>{seconds}</code>,
-      <code>{elapsed}</code>, and <code>{duration}</code> mark where the numbers go, and the number does not sit in the
-      same place in every language — which is why these are templates rather than a prefix and a suffix.
+      속성은 함수를 담을 수 없으므로 카운트다운과 타이머는 템플릿을 받습니다. <code>{seconds}</code>,
+      <code>{elapsed}</code>, <code>{duration}</code>이 숫자가 들어갈 자리를 표시합니다. 숫자의 위치는 언어마다 다르며,
+      접두사와 접미사가 아니라 템플릿인 이유가 그것입니다.
     </p>
 
     <p class="note">
-      These labels do not go through the player's translation registry. The overlay is constructed directly rather than
-      resolved from the player's locale, so you pass the strings you want.
+      이 라벨들은 플레이어의 번역 레지스트리를 거치지 않습니다. 오버레이는 플레이어의 로케일에서 해석되는 대신 직접
+      구성되므로, 원하는 문자열을 그대로 넘기면 됩니다.
     </p>
 
-    <h2 id="styling">Styling the overlay</h2>
+    <h2 id="styling">오버레이 스타일링</h2>
 
     <p>
-      The overlay lives in light DOM, so your own stylesheet reaches it — load yours after
-      <code>video-ads.css</code> and override.
+      오버레이는 light DOM에 있으므로 여러분의 스타일시트가 닿습니다 — <code>video-ads.css</code> 뒤에 불러와
+      덮어쓰세요.
     </p>
 
     <table>
       <thead>
         <tr>
-          <th>Class</th>
-          <th>Element</th>
+          <th>클래스</th>
+          <th>엘리먼트</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>.vjs-ads-overlay</code></td><td>Root, covering the player at <code>z-index: 100</code></td></tr>
-        <tr><td><code>.vjs-ads-media</code></td><td>The ad's video or image, <code>object-fit: contain</code></td></tr>
-        <tr><td><code>.vjs-ads-timer</code></td><td>Bottom-left readout</td></tr>
-        <tr><td><code>.vjs-ads-skip</code></td><td>Bottom-right button</td></tr>
+        <tr><td><code>.vjs-ads-overlay</code></td><td>루트. <code>z-index: 100</code>으로 플레이어를 덮습니다</td></tr>
+        <tr><td><code>.vjs-ads-media</code></td><td>광고의 비디오 또는 이미지. <code>object-fit: contain</code></td></tr>
+        <tr><td><code>.vjs-ads-timer</code></td><td>좌측 하단 표시</td></tr>
+        <tr><td><code>.vjs-ads-skip</code></td><td>우측 하단 버튼</td></tr>
       </tbody>
     </table>
 
-    <p>State is on data attributes, so styling follows it without a class toggle:</p>
+    <p>상태는 data 속성에 실리므로, 클래스를 토글하지 않아도 스타일이 상태를 따라갑니다.</p>
 
     <table>
       <thead>
         <tr>
-          <th>Selector</th>
-          <th>When</th>
+          <th>셀렉터</th>
+          <th>적용 시점</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>.vjs-ads-overlay[data-ad-phase="playing"]</code></td><td>An ad is showing</td></tr>
-        <tr><td><code>.vjs-ads-overlay[data-ad-phase="hidden"]</code></td><td>No ad</td></tr>
-        <tr><td><code>.vjs-ads-skip[data-skip-available="true"]</code></td><td>Skip is usable</td></tr>
-        <tr><td><code>.vjs-ads-skip[data-skip-available="false"]</code></td><td>Still counting down</td></tr>
+        <tr><td><code>.vjs-ads-overlay[data-ad-phase="playing"]</code></td><td>광고가 표시 중</td></tr>
+        <tr><td><code>.vjs-ads-overlay[data-ad-phase="hidden"]</code></td><td>광고 없음</td></tr>
+        <tr><td><code>.vjs-ads-skip[data-skip-available="true"]</code></td><td>건너뛰기 가능</td></tr>
+        <tr><td><code>.vjs-ads-skip[data-skip-available="false"]</code></td><td>아직 카운트다운 중</td></tr>
       </tbody>
     </table>
 
@@ -241,49 +242,49 @@
   background: rgb(255 220 50);
 }</code></pre>
 
-    <h2 id="tracking">Tracking</h2>
+    <h2 id="tracking">트래킹</h2>
 
     <p>
-      With a <code>trackingUrl</code> on the ad, the overlay POSTs a small JSON body at each of these moments. Without
-      one, nothing is sent.
+      광고에 <code>trackingUrl</code>이 있으면 오버레이가 아래 각 시점에 작은 JSON 본문을 POST 합니다. 없으면 아무것도
+      보내지 않습니다.
     </p>
 
     <table>
       <thead>
         <tr>
-          <th>Event</th>
-          <th>Fired when</th>
+          <th>이벤트</th>
+          <th>발생 시점</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>impression</code></td><td>The ad starts</td></tr>
-        <tr><td><code>click</code></td><td>The viewer clicks the ad</td></tr>
-        <tr><td><code>skip</code></td><td>The viewer skips</td></tr>
-        <tr><td><code>complete</code></td><td>The ad reaches its duration</td></tr>
-        <tr><td><code>error</code></td><td>The ad's media failed to load or play</td></tr>
+        <tr><td><code>impression</code></td><td>광고가 시작될 때</td></tr>
+        <tr><td><code>click</code></td><td>시청자가 광고를 클릭할 때</td></tr>
+        <tr><td><code>skip</code></td><td>시청자가 건너뛸 때</td></tr>
+        <tr><td><code>complete</code></td><td>광고가 duration에 도달할 때</td></tr>
+        <tr><td><code>error</code></td><td>광고 미디어의 로드나 재생이 실패할 때</td></tr>
       </tbody>
     </table>
 
-    <p>Beacons use <code>keepalive</code>, so a click that navigates away still reports.</p>
+    <p>비콘은 <code>keepalive</code>를 쓰므로, 클릭으로 페이지를 떠나도 보고는 남습니다.</p>
 
-    <h2 id="manual">Driving it yourself</h2>
+    <h2 id="manual">직접 제어하기</h2>
 
     <p>
-      When the element's lifecycle is not what you want — a midroll, an ad chosen per viewer, your own scheduling — the
-      same bundles export the pieces it is built from.
+      미드롤, 시청자별로 고른 광고, 직접 짠 스케줄링처럼 이 엘리먼트의 생명주기가 맞지 않을 때는, 같은 번들이 그것을
+      이루는 조각들을 그대로 내보냅니다.
     </p>
 
     <table>
       <thead>
         <tr>
-          <th>Export</th>
-          <th>Role</th>
+          <th>export</th>
+          <th>역할</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>fetchAds(url, signal?)</code></td><td>Reads a list and drops malformed entries. Resolves to <code>[]</code> on failure.</td></tr>
-        <tr><td><code>AdsOverlay</code></td><td>Draws the ad: media, timer, skip button.</td></tr>
-        <tr><td><code>trackAdEvent(url, event)</code></td><td>Fires one beacon.</td></tr>
+        <tr><td><code>fetchAds(url, signal?)</code></td><td>목록을 읽고 형식이 잘못된 항목을 버립니다. 실패하면 <code>[]</code>로 resolve 합니다.</td></tr>
+        <tr><td><code>AdsOverlay</code></td><td>광고를 그립니다: 미디어, 타이머, 건너뛰기 버튼.</td></tr>
+        <tr><td><code>trackAdEvent(url, event)</code></td><td>비콘 하나를 보냅니다.</td></tr>
       </tbody>
     </table>
 
@@ -294,53 +295,53 @@ const overlay = new AdsOverlay(container, {
 });</code></pre>
 
     <p>
-      Constructing it yourself takes the labels as functions rather than templates. The container you pass must
-      establish a positioning context, which the element normally arranges for you.
+      직접 생성할 때는 라벨을 템플릿이 아니라 함수로 받습니다. 넘기는 컨테이너는 위치 기준(positioning context)을
+      만들어야 하며, 엘리먼트를 쓸 때는 그 준비를 대신 해줍니다.
     </p>
 
-    <h2 id="trouble">Troubleshooting</h2>
+    <h2 id="trouble">문제 해결</h2>
 
-    <h3>Controls render but nothing responds</h3>
+    <h3>컨트롤은 그려지는데 아무것도 반응하지 않습니다</h3>
 
     <p>
-      The player never attached to media. On a classic script this is the missing <code>defer</code> described above.
-      Confirm with <code>document.querySelector('video-player').store.target</code> — it is <code>null</code> when
-      unattached.
+      플레이어가 미디어에 붙지 못한 것입니다. 클래식 스크립트라면 앞서 설명한 <code>defer</code> 누락입니다.
+      <code>document.querySelector('video-player').store.target</code>으로 확인하세요 — 붙지 않았다면
+      <code>null</code>입니다.
     </p>
 
-    <h3>No ad, but the content plays</h3>
+    <h3>광고 없이 본편만 재생됩니다</h3>
 
     <p>
-      By design. Check the network tab for the <code>src</code> request: a failed fetch, invalid JSON, or an entry
-      missing a required field all reduce to an empty list, and an empty list means no ad.
+      의도된 동작입니다. 네트워크 탭에서 <code>src</code> 요청을 확인하세요. 요청 실패, 잘못된 JSON, 필수 필드가 빠진
+      항목은 모두 빈 목록으로 귀결되고, 빈 목록은 광고 없음을 뜻합니다.
     </p>
 
-    <h3>The overlay is behind something</h3>
+    <h3>오버레이가 다른 요소에 가립니다</h3>
 
     <p>
-      It sits at <code>z-index: 100</code> within the skin. Look for a larger <code>z-index</code> on your own overlay
-      elements rather than on the player.
+      오버레이는 스킨 안에서 <code>z-index: 100</code>에 놓입니다. 플레이어가 아니라 여러분 쪽 오버레이 요소에 더 큰
+      <code>z-index</code>가 있는지 살펴보세요.
     </p>
 
-    <h3>An ad outlasts its duration</h3>
+    <h3>광고가 duration을 넘겨 계속됩니다</h3>
 
     <p>
-      In a background tab the browser throttles the wall-clock timer that backs the countdown, so an ad with no
-      playback progress of its own finishes late. A playing video ad is unaffected. <code>tick-interval</code> does
-      not help here — the throttle applies whatever the interval asks for.
+      백그라운드 탭에서는 브라우저가 카운트다운을 떠받치는 실시간 타이머를 조절(throttle)하므로, 자체 재생 진행이 없는
+      광고는 늦게 끝납니다. 재생 중인 비디오 광고는 영향을 받지 않습니다. 여기서 <code>tick-interval</code>은 도움이
+      되지 않습니다 — 간격을 얼마로 요청하든 조절이 적용되기 때문입니다.
     </p>
 
-    <h3>The ad never ends</h3>
+    <h3>광고가 끝나지 않습니다</h3>
 
     <p>
-      It should not be possible: the wall clock ends the ad at <code>duration</code> plus <code>max-wait</code> even
-      when the ad's media reports nothing, and a media error ends it at once. If you see it, check that the page is
-      loading a build that includes both — earlier builds drove the countdown from <code>timeupdate</code> alone and
-      an unreachable ad URL would hold the content indefinitely.
+      일어날 수 없는 일입니다. 광고 미디어가 아무것도 보고하지 않아도 실시간 시계가 <code>duration</code> 더하기
+      <code>max-wait</code>에서 광고를 끝내고, 미디어 오류는 즉시 끝냅니다. 그런데도 겪는다면 두 가지가 모두 포함된
+      빌드를 불러오고 있는지 확인하세요 — 이전 빌드는 <code>timeupdate</code>만으로 카운트다운을 굴렸고, 닿지 않는 광고
+      URL이 본편을 무한정 붙잡았습니다.
     </p>
 
     <footer>
-      <p><a href="./">Configure and control the player</a> · <a href="../ads/">Runnable examples</a></p>
+      <p><a href="./">플레이어 설정과 제어</a> · <a href="../ads/">실행 가능한 예제</a></p>
     </footer>
   </body>
 </html>

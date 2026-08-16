@@ -1,44 +1,43 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Video.js 10 — preroll ad example</title>
+    <title>Video.js 10 — 프리롤 광고 예제</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main>
-      <h1>Preroll ad example</h1>
-      <p>The same skippable preroll, loaded three ways. Pick the one that matches your page.</p>
+      <h1>프리롤 광고 예제</h1>
+      <p>같은 건너뛰기 가능 프리롤을 세 가지 방식으로 불러옵니다. 여러분의 페이지에 맞는 것을 고르세요.</p>
 
       <ul>
         <li>
-          <a href="./cdn.html">Player from a CDN</a> — two <code>type="module"</code> tags, no build step for the
-          player. Reach for this when you have no bundler.
+          <a href="./cdn.html">CDN에서 받는 플레이어</a> — <code>type="module"</code> 태그 두 개, 플레이어는 빌드 단계
+          없이. 번들러가 없을 때 고르세요.
         </li>
         <li>
-          <a href="./esm.html">One ES module</a> — a single file you host yourself. Fewest requests while staying an ES
-          module.
+          <a href="./esm.html">ES 모듈 하나</a> — 직접 호스팅하는 단일 파일. ES 모듈을 유지하면서 요청 수가 가장 적습니다.
         </li>
         <li>
-          <a href="./iife.html">One classic script</a> — a plain <code>&lt;script&gt;</code> with no
-          <code>type="module"</code>. For pages that cannot use modules at all.
+          <a href="./iife.html">클래식 스크립트 하나</a> — <code>type="module"</code> 없는 평범한
+          <code>&lt;script&gt;</code>. 모듈을 아예 쓸 수 없는 페이지용입니다.
         </li>
       </ul>
 
       <p>
-        Add <code>?ad=image-preroll</code> to any of them to run the image ad instead of the video one. Both media types
-        use the same overlay.
+        어느 페이지든 <code>?ad=image-preroll</code>을 붙이면 비디오 광고 대신 이미지 광고가 실행됩니다. 두 미디어 타입
+        모두 같은 오버레이를 씁니다.
       </p>
 
       <p>
-        The pages load from <code>./dist/</code>, which the ads package build generates. If they come up blank, build it
-        first — see the README.
+        페이지들은 ads 패키지 빌드가 생성하는 <code>./dist/</code>에서 파일을 불러옵니다. 화면이 비어 있다면 먼저
+        빌드하세요 — README를 참고하시면 됩니다.
       </p>
 
       <p>
-        For what you can set on the player and what you can call on it, see
-        <a href="../docs/">Configure and control the player</a>.
+        플레이어에 무엇을 설정할 수 있고 무엇을 호출할 수 있는지는
+        <a href="../docs/">플레이어 설정과 제어</a>를 보세요.
       </p>
     </main>
   </body>

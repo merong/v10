@@ -1,60 +1,59 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Configure and control the player</title>
+    <title>플레이어 설정과 제어</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <h1>Configure and control the player</h1>
+    <h1>플레이어 설정과 제어</h1>
     <p class="lede">
-      What you can set on a Video.js 10 player from plain HTML, and what you can call on it from a script.
+      Video.js 10 플레이어를 순수 HTML로 설정하는 방법과, 스크립트에서 호출할 수 있는 것들.
     </p>
 
     <nav class="toc">
-      On this page
+      이 문서의 목차
       <ol>
-        <li><a href="#halves">Two halves</a></li>
-        <li><a href="#configure">What you configure</a></li>
-        <li><a href="#store">Getting the store</a></li>
-        <li><a href="#using">Reading, calling, subscribing</a></li>
-        <li><a href="#surface">The full surface</a></li>
-        <li><a href="#gotchas">Gotchas</a></li>
+        <li><a href="#halves">두 갈래</a></li>
+        <li><a href="#configure">무엇을 설정하나</a></li>
+        <li><a href="#store">스토어 가져오기</a></li>
+        <li><a href="#using">읽기, 호출하기, 구독하기</a></li>
+        <li><a href="#surface">전체 목록</a></li>
+        <li><a href="#gotchas">함정</a></li>
       </ol>
-      <p style="margin: 0.75rem 0 0">Ads have their own page: <a href="./ads.html">Run a preroll ad</a>.</p>
+      <p style="margin: 0.75rem 0 0">광고는 별도 문서입니다: <a href="./ads.html">프리롤 광고 실행하기</a>.</p>
     </nav>
 
-    <h2 id="halves">Two halves</h2>
+    <h2 id="halves">두 갈래</h2>
 
     <p>
-      There is no init call and no options object. The player is a set of custom elements, so loading the script
-      registers them and the markup does the rest. Configuration and control are separate:
+      초기화 함수도, 옵션 객체도 없습니다. 플레이어는 커스텀 엘리먼트의 묶음이라서, 스크립트를 불러오면 엘리먼트가
+      등록되고 나머지는 마크업이 합니다. 설정과 제어는 서로 분리되어 있습니다.
     </p>
 
     <ul>
-      <li><strong>Configuration is markup.</strong> Attributes and slots, set before or while the player runs.</li>
+      <li><strong>설정은 마크업입니다.</strong> 속성과 슬롯으로, 플레이어가 뜨기 전에도 도중에도 지정합니다.</li>
       <li>
-        <strong>Control is script.</strong> Every player element exposes a <code>store</code> holding current state and
-        the actions that change it.
+        <strong>제어는 스크립트입니다.</strong> 모든 플레이어 엘리먼트는 현재 상태와 그것을 바꾸는 액션을 담은
+        <code>store</code>를 노출합니다.
       </li>
     </ul>
 
     <p>
-      A page that only needs a player to appear never touches the second half. See
-      <a href="../ads/">the ad examples</a> for three ways to load the script itself.
+      플레이어를 화면에 띄우기만 하면 되는 페이지는 두 번째 갈래를 건드릴 일이 없습니다. 스크립트를 불러오는 세 가지
+      방식은 <a href="../ads/">광고 예제</a>에서 확인하세요.
     </p>
 
-    <h2 id="configure">What you configure</h2>
+    <h2 id="configure">무엇을 설정하나</h2>
 
-    <p>Configuration lives in four places, and which one you use depends on what you are setting.</p>
+    <p>설정이 들어가는 자리는 네 군데이고, 무엇을 설정하느냐에 따라 자리가 정해집니다.</p>
 
-    <h3>The media element</h3>
+    <h3>미디어 엘리먼트</h3>
 
     <p>
-      Playback options are the standard HTML media attributes, on the <code>&lt;video&gt;</code> or
-      <code>&lt;audio&gt;</code> element (or a media element like <code>&lt;hlsjs-video&gt;</code>). Nothing here is
-      Video.js-specific.
+      재생 옵션은 <code>&lt;video&gt;</code>나 <code>&lt;audio&gt;</code> 엘리먼트(또는 <code>&lt;hlsjs-video&gt;</code>
+      같은 미디어 엘리먼트)에 붙이는 표준 HTML 미디어 속성입니다. 여기에 Video.js 고유의 것은 없습니다.
     </p>
 
     <pre><code>&lt;video-player&gt;
@@ -74,48 +73,47 @@
     <table>
       <thead>
         <tr>
-          <th>Attribute</th>
-          <th>Effect</th>
+          <th>속성</th>
+          <th>효과</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td><code>src</code></td><td>What to play.</td></tr>
-        <tr><td><code>autoplay</code></td><td>Start without a gesture. Browsers only allow it when also muted.</td></tr>
-        <tr><td><code>muted</code></td><td>Start silent.</td></tr>
-        <tr><td><code>loop</code></td><td>Restart on end.</td></tr>
-        <tr><td><code>playsinline</code></td><td>Play in place on iOS instead of going fullscreen.</td></tr>
-        <tr><td><code>preload</code></td><td><code>none</code>, <code>metadata</code>, or <code>auto</code>.</td></tr>
-        <tr><td><code>crossorigin</code></td><td>Needed for text tracks and thumbnails from another origin.</td></tr>
-        <tr><td><code>poster</code></td><td>Still shown before playback.</td></tr>
+        <tr><td><code>src</code></td><td>재생할 대상.</td></tr>
+        <tr><td><code>autoplay</code></td><td>사용자 조작 없이 시작. 브라우저는 <code>muted</code>가 함께 있을 때만 허용합니다.</td></tr>
+        <tr><td><code>muted</code></td><td>무음으로 시작.</td></tr>
+        <tr><td><code>loop</code></td><td>끝나면 다시 재생.</td></tr>
+        <tr><td><code>playsinline</code></td><td>iOS에서 전체화면으로 넘어가지 않고 제자리에서 재생.</td></tr>
+        <tr><td><code>preload</code></td><td><code>none</code>, <code>metadata</code>, <code>auto</code> 중 하나.</td></tr>
+        <tr><td><code>crossorigin</code></td><td>다른 출처의 텍스트 트랙과 썸네일을 쓰려면 필요합니다.</td></tr>
+        <tr><td><code>poster</code></td><td>재생 전에 보여줄 정지 이미지.</td></tr>
       </tbody>
     </table>
 
-    <h3>The player element</h3>
+    <h3>플레이어 엘리먼트</h3>
 
     <p>
-      <code>&lt;video-player&gt;</code> takes configuration that belongs to the player rather than to the media. Each
-      player feature can declare configuration keys, which become kebab-cased attributes. In the standard video preset
-      that is metadata:
+      <code>&lt;video-player&gt;</code>는 미디어가 아니라 플레이어에 속하는 설정을 받습니다. 각 플레이어 기능이 설정
+      키를 선언할 수 있고, 그 키가 케밥 케이스 속성이 됩니다. 표준 video 프리셋에서는 메타데이터가 그렇습니다.
     </p>
 
     <table>
       <thead>
         <tr>
-          <th>Attribute</th>
-          <th>Reads back as</th>
-          <th>Effect</th>
+          <th>속성</th>
+          <th>읽을 때</th>
+          <th>효과</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><code>content-title</code></td>
           <td><code>store.contentTitle</code></td>
-          <td>Title shown by the UI. Wins over a title the media itself reports.</td>
+          <td>UI에 표시되는 제목. 미디어가 보고하는 제목보다 우선합니다.</td>
         </tr>
         <tr>
           <td><code>default-content-title</code></td>
           <td><code>store.contentTitle</code></td>
-          <td>Fallback used only when neither of the other two is set.</td>
+          <td>앞의 둘 중 어느 것도 없을 때만 쓰이는 대체값.</td>
         </tr>
       </tbody>
     </table>
@@ -123,113 +121,113 @@
     <pre><code>&lt;video-player content-title="Big Buck Bunny"&gt;</code></pre>
 
     <p class="note">
-      These are live. Setting the attribute later — <code>player.setAttribute('content-title', 'Episode 2')</code> —
-      flows through to <code>store.contentTitle</code>.
+      이 속성들은 살아 있습니다. 나중에 속성을 바꿔도 —
+      <code>player.setAttribute('content-title', 'Episode 2')</code> — <code>store.contentTitle</code>까지 반영됩니다.
     </p>
 
-    <h3>Slots and child elements</h3>
+    <h3>슬롯과 자식 엘리먼트</h3>
 
-    <p>Some things are elements rather than attributes:</p>
+    <p>속성이 아니라 엘리먼트로 주는 것들도 있습니다.</p>
 
     <table>
       <thead>
         <tr>
-          <th>Markup</th>
-          <th>Purpose</th>
+          <th>마크업</th>
+          <th>용도</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><code>&lt;img slot="poster"&gt;</code></td>
-          <td>Poster you want the skin to render and manage, rather than the browser's own.</td>
+          <td>브라우저 기본 포스터 대신, 스킨이 직접 그리고 관리할 포스터.</td>
         </tr>
         <tr>
           <td><code>&lt;track kind="chapters"&gt;</code></td>
-          <td>Chapter markers on the time slider.</td>
+          <td>타임 슬라이더 위의 챕터 표시.</td>
         </tr>
         <tr>
           <td><code>&lt;track kind="metadata" label="thumbnails"&gt;</code></td>
-          <td>Storyboard thumbnails shown while scrubbing. The label is what identifies it — a metadata track by any other label is ignored.</td>
+          <td>탐색 중 표시되는 스토리보드 썸네일. 이것을 식별하는 것은 라벨입니다 — 라벨이 다른 metadata 트랙은 무시됩니다.</td>
         </tr>
         <tr>
           <td><code>&lt;media-i18n&gt;</code></td>
-          <td>Wraps the player to translate control labels. Not needed for English.</td>
+          <td>플레이어를 감싸 컨트롤 라벨을 번역합니다. 영어만 쓴다면 필요 없습니다.</td>
         </tr>
         <tr>
           <td><code>&lt;media-ads&gt;</code></td>
           <td>
-            Runs a preroll before the content. See <a href="./ads.html">Run a preroll ad</a>.
+            본편 앞에 프리롤을 실행합니다. <a href="./ads.html">프리롤 광고 실행하기</a> 참고.
           </td>
         </tr>
       </tbody>
     </table>
 
-    <h3>The bundle you load</h3>
+    <h3>어떤 번들을 불러오는가</h3>
 
     <p>
-      The largest configuration decision is made before any markup: which script you load. It fixes the skin and which
-      features the store has. <code>video.js</code> and <code>video-minimal.js</code> give different skins;
-      <code>video-headless.js</code> gives none. An audio bundle builds a store without fullscreen or picture-in-picture
-      because an audio player has no use for them.
+      가장 큰 설정은 마크업을 쓰기 전에 결정됩니다. 어떤 스크립트를 불러오느냐가 스킨과 스토어가 갖는 기능을
+      고정합니다. <code>video.js</code>와 <code>video-minimal.js</code>는 서로 다른 스킨을 주고,
+      <code>video-headless.js</code>는 스킨을 주지 않습니다. audio 번들은 전체화면과 PiP 없이 스토어를 구성합니다 —
+      오디오 플레이어에는 쓸 일이 없기 때문입니다.
     </p>
 
-    <h2 id="store">Getting the store</h2>
+    <h2 id="store">스토어 가져오기</h2>
 
-    <p>Every player element exposes its store as a property:</p>
+    <p>모든 플레이어 엘리먼트는 스토어를 프로퍼티로 노출합니다.</p>
 
     <pre><code>const player = document.querySelector('video-player');
 const store = player.store;</code></pre>
 
     <p>
-      It is ready as soon as your script runs, provided the player script ran first. In a module script that is
-      automatic, since modules are deferred and execute in order.
+      플레이어 스크립트가 먼저 실행되었다면, 여러분의 스크립트가 도는 시점에 스토어는 이미 준비되어 있습니다. 모듈
+      스크립트라면 자동으로 그렇게 됩니다 — 모듈은 defer 되고 순서대로 실행되기 때문입니다.
     </p>
 
     <p class="note">
-      <strong>A classic script needs <code>defer</code>.</strong> Without it the script runs while the parser is still
-      working, so <code>&lt;video-player&gt;</code> upgrades before its <code>&lt;video&gt;</code> child exists and
-      never attaches to it. The store is there and the controls render, but <code>store.target</code> is
-      <code>null</code> and nothing responds.
+      <strong>클래식 스크립트에는 <code>defer</code>가 필요합니다.</strong> 없으면 파서가 아직 문서를 읽는 중에
+      스크립트가 실행되어, <code>&lt;video-player&gt;</code>가 자식 <code>&lt;video&gt;</code>가 생기기 전에 업그레이드되고
+      끝내 미디어에 붙지 못합니다. 스토어도 있고 컨트롤도 그려지지만 <code>store.target</code>은 <code>null</code>이고
+      아무것도 반응하지 않습니다.
     </p>
 
     <p class="note">
-      <strong>State is not.</strong> <code>store.target</code> is populated immediately, but anything the media reports
-      — <code>duration</code>, <code>canPlay</code>, track lists — stays empty until metadata loads. Reading
-      <code>duration</code> in the same tick gives <code>0</code>. Subscribe instead of reading once.
+      <strong>상태는 준비되어 있지 않습니다.</strong> <code>store.target</code>은 즉시 채워지지만, 미디어가 보고하는
+      값 — <code>duration</code>, <code>canPlay</code>, 트랙 목록 — 은 메타데이터가 로드될 때까지 비어 있습니다. 같은
+      tick에서 <code>duration</code>을 읽으면 <code>0</code>입니다. 한 번 읽지 말고 구독하세요.
     </p>
 
-    <h2 id="using">Reading, calling, subscribing</h2>
+    <h2 id="using">읽기, 호출하기, 구독하기</h2>
 
-    <p>State and actions sit directly on the store. There is no <code>getState()</code> and no dispatch.</p>
+    <p>상태와 액션은 스토어에 바로 놓여 있습니다. <code>getState()</code>도 dispatch도 없습니다.</p>
 
     <pre><code>store.paused;        // true
 store.currentTime;   // 0
-store.duration;      // 25.32 once metadata has loaded
+store.duration;      // 25.32 (메타데이터 로드 후)
 
 store.play();
 store.seek(30);
 store.setVolume(0.5);
 store.toggleFullscreen();</code></pre>
 
-    <p><code>subscribe</code> tells you something changed and returns a function that stops it:</p>
+    <p><code>subscribe</code>는 무언가 바뀌었음을 알려주고, 구독을 멈추는 함수를 돌려줍니다.</p>
 
     <pre><code>const stop = store.subscribe(() =&gt; {
   progress.value = store.currentTime / store.duration;
 });
 
-// later
+// 나중에
 stop();</code></pre>
 
     <p class="note">
-      The callback takes <strong>no arguments</strong>. It is a notification, not a payload — read the values you care
-      about off the store inside it.
+      콜백은 <strong>인자를 받지 않습니다</strong>. 값이 실려 오는 게 아니라 알림일 뿐이니, 필요한 값은 콜백 안에서
+      스토어에서 직접 읽으세요.
     </p>
 
-    <h2 id="surface">The full surface</h2>
+    <h2 id="surface">전체 목록</h2>
 
     <p>
-      What follows is the store of a standard video player. An audio or background player has fewer groups. Rather than
-      trusting this table, you can always print the real one:
+      아래는 표준 video 플레이어의 스토어입니다. audio나 background 플레이어는 그룹이 더 적습니다. 이 표를 믿는 대신,
+      언제든 실제 목록을 출력해 볼 수 있습니다.
     </p>
 
     <pre><code>const store = document.querySelector('video-player').store;
@@ -238,56 +236,56 @@ console.log(Object.keys(store));</code></pre>
     <table>
       <thead>
         <tr>
-          <th>Group</th>
-          <th>State</th>
-          <th>Actions</th>
+          <th>그룹</th>
+          <th>상태</th>
+          <th>액션</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Playback</td>
+          <td>재생</td>
           <td><code>paused</code>, <code>ended</code>, <code>started</code>, <code>waiting</code></td>
           <td><code>play()</code>, <code>pause()</code>, <code>togglePaused()</code></td>
         </tr>
         <tr>
-          <td>Time</td>
+          <td>시간</td>
           <td><code>currentTime</code>, <code>duration</code>, <code>seeking</code></td>
           <td><code>seek(time)</code></td>
         </tr>
         <tr>
-          <td>Volume</td>
+          <td>볼륨</td>
           <td>
             <code>volume</code>, <code>muted</code>, <code>volumeAvailability</code>, <code>mutedAvailability</code>
           </td>
           <td><code>setVolume(level)</code>, <code>toggleMuted()</code></td>
         </tr>
         <tr>
-          <td>Playback rate</td>
+          <td>재생 속도</td>
           <td><code>playbackRate</code>, <code>playbackRates</code></td>
           <td><code>setPlaybackRate(rate)</code></td>
         </tr>
         <tr>
-          <td>Source</td>
+          <td>소스</td>
           <td><code>source</code>, <code>canPlay</code></td>
           <td><code>loadSource(source)</code></td>
         </tr>
         <tr>
-          <td>Buffer</td>
+          <td>버퍼</td>
           <td><code>buffered</code>, <code>seekable</code></td>
           <td>—</td>
         </tr>
         <tr>
-          <td>Quality</td>
+          <td>화질</td>
           <td><code>videoRenditionList</code>, <code>activeVideoRendition</code></td>
           <td><code>selectVideoRendition(rendition)</code></td>
         </tr>
         <tr>
-          <td>Audio tracks</td>
+          <td>오디오 트랙</td>
           <td><code>audioTrackList</code></td>
           <td><code>selectAudioTrack(track)</code></td>
         </tr>
         <tr>
-          <td>Text tracks</td>
+          <td>텍스트 트랙</td>
           <td>
             <code>textTrackList</code>, <code>subtitlesShowing</code>, <code>chaptersCues</code>,
             <code>thumbnailCues</code>, <code>thumbnailTrackSrc</code>
@@ -295,14 +293,14 @@ console.log(Object.keys(store));</code></pre>
           <td><code>toggleSubtitles(on)</code>, <code>selectSubtitlesTrack(track)</code></td>
         </tr>
         <tr>
-          <td>Fullscreen</td>
+          <td>전체화면</td>
           <td><code>fullscreen</code>, <code>fullscreenAvailability</code></td>
           <td>
             <code>requestFullscreen()</code>, <code>exitFullscreen()</code>, <code>toggleFullscreen()</code>
           </td>
         </tr>
         <tr>
-          <td>Picture-in-picture</td>
+          <td>PiP</td>
           <td><code>pip</code>, <code>pipAvailability</code></td>
           <td>
             <code>requestPictureInPicture()</code>, <code>exitPictureInPicture()</code>,
@@ -310,22 +308,22 @@ console.log(Object.keys(store));</code></pre>
           </td>
         </tr>
         <tr>
-          <td>Remote playback</td>
+          <td>원격 재생</td>
           <td><code>remotePlaybackState</code>, <code>remotePlaybackAvailability</code></td>
           <td><code>toggleRemotePlayback()</code></td>
         </tr>
         <tr>
-          <td>Controls</td>
+          <td>컨트롤</td>
           <td><code>userActive</code>, <code>controlsVisible</code></td>
           <td><code>requestControlsLock()</code>, <code>toggleControls()</code></td>
         </tr>
         <tr>
-          <td>Error</td>
+          <td>오류</td>
           <td><code>error</code></td>
           <td><code>dismissError()</code></td>
         </tr>
         <tr>
-          <td>Metadata</td>
+          <td>메타데이터</td>
           <td><code>contentTitle</code></td>
           <td><code>setContentTitle(title)</code>, <code>setDefaultContentTitle(title)</code></td>
         </tr>
@@ -333,52 +331,51 @@ console.log(Object.keys(store));</code></pre>
     </table>
 
     <p>
-      Alongside those the store carries its own lifecycle: <code>target</code> (the media and container it is attached
-      to), <code>destroyed</code>, <code>subscribe()</code>, <code>attach()</code>, and <code>destroy()</code>. The
-      player element manages attach and destroy for you; you rarely call them yourself.
+      이 밖에 스토어는 자신의 생명주기도 함께 갖습니다: <code>target</code>(붙어 있는 미디어와 컨테이너),
+      <code>destroyed</code>, <code>subscribe()</code>, <code>attach()</code>, <code>destroy()</code>. attach와
+      destroy는 플레이어 엘리먼트가 알아서 처리하므로 직접 부를 일은 거의 없습니다.
     </p>
 
     <p>
-      An <code>*Availability</code> value tells you whether the browser offers that capability at all — check it before
-      showing a control for it.
+      <code>*Availability</code> 값은 브라우저가 그 기능을 제공하는지 자체를 알려줍니다 — 해당 컨트롤을 노출하기 전에
+      확인하세요.
     </p>
 
-    <h2 id="gotchas">Gotchas</h2>
+    <h2 id="gotchas">함정</h2>
 
-    <h3>Not every write reads back</h3>
+    <h3>쓴 값이 곧바로 읽히지는 않습니다</h3>
 
     <p>
-      Some state is the store's own and updates immediately. Anything the media owns — volume, muted — is set on the
-      media element and only reaches the store when the browser reports it back, a turn or more later:
+      스토어가 직접 소유한 상태는 즉시 갱신됩니다. 반면 미디어가 소유한 것 — volume, muted — 은 미디어 엘리먼트에
+      설정되고, 브라우저가 되돌려 보고할 때 비로소 스토어에 도달합니다. 한 턴 이상 뒤의 일입니다.
     </p>
 
     <pre><code>store.setContentTitle('Episode 2');
-store.contentTitle;                  // 'Episode 2', immediately
+store.contentTitle;                  // 'Episode 2', 즉시
 
 store.setVolume(0.5);
-store.volume;                        // still 1
-queueMicrotask(() =&gt; store.volume);  // still 1 — a microtask is not enough
+store.volume;                        // 여전히 1
+queueMicrotask(() =&gt; store.volume);  // 여전히 1 — 마이크로태스크로는 부족합니다
 setTimeout(() =&gt; store.volume);      // 0.5</code></pre>
 
     <p>
-      Rather than learning which is which, treat no action as synchronous and read through <code>subscribe</code>.
-      Notifications are batched: several actions in one tick produce one callback, which is what you want for
-      rendering.
+      어느 쪽인지 외우는 대신, 어떤 액션도 동기적이라고 보지 말고 <code>subscribe</code>로 읽으세요. 알림은 묶여서
+      옵니다. 한 tick 안의 여러 액션이 콜백 한 번으로 합쳐지므로 렌더링에 그대로 쓰기 좋습니다.
     </p>
 
-    <h3>Media state starts empty</h3>
+    <h3>미디어 상태는 비어 있는 채로 시작합니다</h3>
 
     <p>
-      <code>duration</code> is <code>0</code> and <code>canPlay</code> is <code>false</code> until the browser has the
-      metadata. Track lists are empty for the same reason. Anything reading these should go through
-      <code>subscribe</code>.
+      브라우저가 메타데이터를 확보하기 전까지 <code>duration</code>은 <code>0</code>, <code>canPlay</code>는
+      <code>false</code>입니다. 트랙 목록이 비어 있는 것도 같은 이유입니다. 이 값들을 읽는 코드는 모두
+      <code>subscribe</code>를 거쳐야 합니다.
     </p>
 
-    <h3>The skin needs a size</h3>
+    <h3>스킨에는 크기가 필요합니다</h3>
 
     <p>
-      <code>&lt;video-skin&gt;</code> fills its container, and a container with no height collapses to nothing. Give it
-      one:
+      <code>&lt;video-skin&gt;</code>은 컨테이너를 채우는데, 높이가 없는 컨테이너는 아무것도 아닌 크기로 무너집니다.
+      크기를 주세요.
     </p>
 
     <pre><code>video-skin {
@@ -389,10 +386,10 @@ setTimeout(() =&gt; store.volume);      // 0.5</code></pre>
 
     <footer>
       <p>
-        The tables above were read off a running player rather than transcribed, so they describe the build in this
-        repository. Print <code>Object.keys(store)</code> to check yours.
+        위의 표들은 옮겨 적은 것이 아니라 실행 중인 플레이어에서 읽어낸 것이라, 이 저장소의 빌드를 그대로 설명합니다.
+        여러분의 빌드는 <code>Object.keys(store)</code>로 확인하세요.
       </p>
-      <p><a href="./ads.html">Run a preroll ad</a> · <a href="../ads/">Runnable examples</a> · <a href="https://videojs.com/">videojs.com</a></p>
+      <p><a href="./ads.html">프리롤 광고 실행하기</a> · <a href="../ads/">실행 가능한 예제</a> · <a href="https://videojs.com/">videojs.com</a></p>
     </footer>
   </body>
 </html>

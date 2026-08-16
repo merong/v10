@@ -48,6 +48,8 @@ Fork documentation lives in `examples/docs/`, is served statically alongside the
 
 One document per subject. Before writing a new one, find the existing one — this fork has already grown six overlapping documents once.
 
+**Reader-facing documentation is written in Korean.** That covers `examples/docs/`, the pages under `examples/`, and package READMEs — anything a reader of this fork reads to learn how to use it. Identifiers stay as they are: element and attribute names, store keys, CSS classes, file names, and code samples are not translated. Source comments and commit messages stay English, matching upstream's tree and `AGENTS.md`.
+
 ## Build artifacts are generated, not committed
 
 `examples/ads/dist/` is produced by the ads build and gitignored. Committed bundles go stale, bloat diffs, and turn every rebuild into noise in `git status`.

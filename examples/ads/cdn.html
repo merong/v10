@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Preroll ad — player from a CDN</title>
+    <title>프리롤 광고 — CDN에서 받는 플레이어</title>
     <link rel="stylesheet" href="./dist/video-ads.css" />
     <link rel="stylesheet" href="./style.css" />
 
-    <!-- The player comes from the public CDN; only the ads code is local,
-         because @videojs/ads is not published. -->
+    <!-- 플레이어는 공개 CDN에서 받고, 광고 코드만 로컬입니다.
+         @videojs/ads는 배포된 패키지가 아니기 때문입니다. -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@videojs/html/cdn/video.js"></script>
     <script type="module" src="./dist/videojs-ads.js"></script>
   </head>
   <body>
     <main>
-      <h1>Player from a CDN</h1>
+      <h1>CDN에서 받는 플레이어</h1>
 
       <video-player>
         <video-skin>
@@ -27,7 +27,7 @@
         <span class="tag">jsdelivr @videojs/html + ./dist/videojs-ads.js</span>
       </div>
 
-      <nav><a href="./">← All three forms</a></nav>
+      <nav><a href="./">← 세 가지 방식 전체</a></nav>
     </main>
   </body>
 </html>
