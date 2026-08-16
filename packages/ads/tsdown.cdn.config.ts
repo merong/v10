@@ -1,5 +1,10 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { UserConfig } from 'tsdown';
 import { defineConfig } from 'tsdown';
+import { copyCssPlugin } from '../../build/plugins/copy-css-plugin.ts';
+
+const skinsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../skins/src');
 
 type BuildMode = 'dev' | 'prod';
 
@@ -61,6 +66,8 @@ configs.push({
   outDir: 'cdn',
   // tsdown appends `.iife.js` for this format, so the entry name stays bare.
   outputOptions: { name: 'VideojsAds' },
+  // Emitted once for the whole cdn/ directory; the ESM builds share it.
+  plugins: [copyCssPlugin({ skinsDir, outDir: 'cdn', inline: false })],
   define: {
     __DEV__: 'false',
   },

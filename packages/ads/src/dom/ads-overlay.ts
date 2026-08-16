@@ -1,73 +1,5 @@
 import type { Ad } from '../core/ads-state';
 
-const ADS_STYLE_ID = 'vjs-ads-overlay-style';
-
-const ADS_CSS = `
-.vjs-ads-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 100;
-  display: none;
-  background: #000;
-}
-.vjs-ads-overlay[data-ad-phase='playing'] {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.vjs-ads-overlay[data-ad-phase='hidden'] {
-  display: none;
-}
-.vjs-ads-media {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  cursor: pointer;
-}
-.vjs-ads-timer {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
-  user-select: none;
-}
-.vjs-ads-skip {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  padding: 6px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  font-size: 13px;
-  cursor: default;
-  user-select: none;
-  transition: background 0.15s, border-color 0.15s;
-}
-.vjs-ads-skip[data-skip-available='true'] {
-  cursor: pointer;
-  border-color: #fff;
-}
-.vjs-ads-skip[data-skip-available='true']:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-`;
-
-function injectStyles(): void {
-  if (document.getElementById(ADS_STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = ADS_STYLE_ID;
-  style.textContent = ADS_CSS;
-  document.head.appendChild(style);
-}
-
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -112,8 +44,6 @@ export class AdsOverlay {
   #labels: AdsOverlayLabels;
 
   constructor(container: HTMLElement, options: AdsOverlayOptions = {}) {
-    injectStyles();
-
     this.#labels = { ...DEFAULT_LABELS, ...options.labels };
 
     this.#root = document.createElement('div');

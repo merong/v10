@@ -1,3 +1,8 @@
+/*
+ * The overlay's stylesheet. Shipped as a file rather than injected from the
+ * bundle, so a page links it once alongside the player's own stylesheet.
+ */
+
 .vjs-ads-overlay {
   position: absolute;
   inset: 0;

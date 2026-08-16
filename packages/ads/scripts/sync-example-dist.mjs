@@ -48,10 +48,13 @@ await mkdir(target, { recursive: true });
 
 let copied = 0;
 
-for (const entry of await readdir(source, { withFileTypes: true })) {
-  if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+for (const entry of await readdir(source, { withFileTypes: true, recursive: true })) {
+  if (!entry.isFile()) continue;
+  if (!entry.name.endsWith('.js') && !entry.name.endsWith('.css')) continue;
 
-  await cp(join(source, entry.name), join(target, entry.name));
+  // The stylesheet sits under dom/ in the build output; the example wants a
+  // flat directory, and the name is unambiguous on its own.
+  await cp(join(entry.parentPath, entry.name), join(target, entry.name));
   copied += 1;
 }
 
