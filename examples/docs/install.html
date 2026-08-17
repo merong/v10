@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>설치 가이드</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <h1>설치 가이드</h1>
+    <p class="lede">
+      광고가 포함된 Video.js 10 플레이어를 페이지에 올리는 세 가지 방법 — IIFE, ESM, CDN.
+    </p>
+
+    <nav class="toc">
+      이 문서의 목차
+      <ol>
+        <li><a href="#what">무엇을 설치하나</a></li>
+        <li><a href="#build">파일 만들기</a></li>
+        <li><a href="#choose">어떤 방식을 고를까</a></li>
+        <li><a href="#iife">IIFE — 클래식 스크립트</a></li>
+        <li><a href="#esm">ESM — 모듈 스크립트</a></li>
+        <li><a href="#cdn">CDN — 플레이어는 CDN, 광고는 로컬</a></li>
+        <li><a href="#verify">설치 확인</a></li>
+        <li><a href="#trouble">문제 해결</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="what">무엇을 설치하나</h2>
+
+    <p>
+      어떤 방식을 고르든 페이지가 불러오는 것은 <strong>JavaScript 파일 하나와 CSS 파일 하나</strong>입니다. 빌드
+      도구도, 초기화 코드도 필요하지 않습니다. 스크립트가 커스텀 엘리먼트를 등록하고 나면 나머지는 마크업이 합니다.
+    </p>
+
+    <pre><code>&lt;link rel="stylesheet" href="/video-ads.css" /&gt;
+&lt;script defer src="/video-ads.iife.js"&gt;&lt;/script&gt;
+
+&lt;video-player&gt;
+  &lt;video-skin&gt;
+    &lt;video src="/video.mp4" playsinline&gt;&lt;/video&gt;
+    &lt;media-ads src="/ads.json"&gt;&lt;/media-ads&gt;
+  &lt;/video-skin&gt;
+&lt;/video-player&gt;</code></pre>
+
+    <p class="note">
+      CSS 파일이 하나뿐인 이유가 있습니다. 스킨의 스타일은 shadow root 안에 적용되는데, 링크된 스타일시트는 shadow
+      경계를 넘지 못하므로 플레이어 번들이 직접 들고 있다가 런타임에 적용합니다. 여러분이 링크할
+      <code>video-ads.css</code>는 light DOM에 있는 것 — 광고 오버레이 — 만 담습니다.
+    </p>
+
+    <h2 id="build">파일 만들기</h2>
+
+    <p>
+      <code>@videojs/ads</code>는 npm에 배포되지 않은 이 포크 전용 패키지입니다. 따라서 파일은 저장소에서 직접
+      빌드합니다.
+    </p>
+
+    <pre><code>pnpm install
+pnpm -F @videojs/ads build:cdn</code></pre>
+
+    <p>
+      결과물은 <code>packages/ads/cdn/</code>에 생성되고, 예제가 바로 쓸 수 있도록
+      <code>examples/ads/dist/</code>로도 복사됩니다. 이 디렉터리들은 빌드 산출물이라 저장소에 커밋되지 않으므로,
+      새로 클론했다면 위 명령을 먼저 실행해야 합니다.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>파일</th>
+          <th>크기</th>
+          <th>gzip</th>
+          <th>용도</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>video-ads.iife.js</code></td><td>415 KB</td><td>110 KB</td><td>플레이어 + 광고, 클래식 스크립트용</td></tr>
+        <tr><td><code>video-ads.js</code></td><td>415 KB</td><td>110 KB</td><td>플레이어 + 광고, 모듈용</td></tr>
+        <tr><td><code>videojs-ads.js</code></td><td>10 KB</td><td>3 KB</td><td>광고만, 이미 있는 플레이어 옆에</td></tr>
+        <tr><td><code>video-ads.css</code></td><td>2 KB</td><td>1 KB</td><td>광고 오버레이 스타일. 세 방식 공통</td></tr>
+        <tr><td><code>*.dev.js</code></td><td>—</td><td>—</td><td>압축하지 않은 디버깅용 빌드. 배포용은 아닙니다</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      세 번들 모두 <code>import</code>가 하나도 없는 완결된 단일 파일입니다. 옆에 함께 올려야 할 청크나 로케일 조각이
+      없으므로, 파일을 복사해 정적 경로에 두는 것으로 배포가 끝납니다.
+    </p>
+
+    <h2 id="choose">어떤 방식을 고를까</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>방식</th>
+          <th>호스팅할 파일</th>
+          <th>이럴 때 고르세요</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="#iife">IIFE</a></td>
+          <td><code>video-ads.iife.js</code> + <code>video-ads.css</code></td>
+          <td><code>type="module"</code>을 쓸 수 없는 페이지. 레거시 템플릿, CMS, 스크립트 태그만 끼워 넣을 수 있는 환경</td>
+        </tr>
+        <tr>
+          <td><a href="#esm">ESM</a></td>
+          <td><code>video-ads.js</code> + <code>video-ads.css</code></td>
+          <td>모듈을 쓸 수 있는 보통의 페이지. 기본으로 권합니다</td>
+        </tr>
+        <tr>
+          <td><a href="#cdn">CDN</a></td>
+          <td><code>videojs-ads.js</code> + <code>video-ads.css</code> (10 KB + 2 KB)</td>
+          <td>플레이어를 직접 호스팅하고 싶지 않을 때. 또는 이미 <code>@videojs/html</code>을 불러오고 있어 광고만 얹으면 될 때</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="iife">IIFE — 클래식 스크립트</h2>
+
+    <ol>
+      <li><code>video-ads.iife.js</code>와 <code>video-ads.css</code>를 정적 파일 경로에 복사합니다.</li>
+      <li><code>&lt;head&gt;</code>에 스타일시트와 스크립트를 넣습니다. <strong><code>defer</code>를 반드시 붙입니다.</strong></li>
+      <li>마크업을 작성합니다.</li>
+    </ol>
+
+    <pre><code>&lt;!doctype html&gt;
+&lt;html lang="ko"&gt;
+  &lt;head&gt;
+    &lt;meta charset="UTF-8" /&gt;
+    &lt;link rel="stylesheet" href="/assets/video-ads.css" /&gt;
+    &lt;script defer src="/assets/video-ads.iife.js"&gt;&lt;/script&gt;
+    &lt;style&gt;
+      video-skin { display: block; width: 100%; aspect-ratio: 16 / 9; }
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;video-player&gt;
+      &lt;video-skin&gt;
+        &lt;video src="/media/video.mp4" playsinline&gt;&lt;/video&gt;
+        &lt;media-ads src="/ads.json"&gt;&lt;/media-ads&gt;
+      &lt;/video-skin&gt;
+    &lt;/video-player&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+    <p class="note">
+      <strong><code>defer</code>는 필수입니다.</strong> 클래식 스크립트는 파서가 아직 문서를 읽는 중에 실행되므로,
+      <code>defer</code>가 없으면 <code>&lt;video-player&gt;</code>가 자식 <code>&lt;video&gt;</code>가 생기기 전에
+      업그레이드되어 붙을 미디어를 찾지 못합니다. 컨트롤은 그려지지만 아무것도 반응하지 않습니다. 스크립트를
+      <code>&lt;/body&gt;</code> 직전에 두어도 같은 효과를 냅니다.
+    </p>
+
+    <p>전역으로 <code>VideojsAds</code>가 노출됩니다. 광고를 직접 제어할 때만 쓰면 되고, 보통은 건드릴 일이 없습니다.</p>
+
+    <h2 id="esm">ESM — 모듈 스크립트</h2>
+
+    <ol>
+      <li><code>video-ads.js</code>와 <code>video-ads.css</code>를 정적 파일 경로에 복사합니다.</li>
+      <li><code>&lt;script type="module"&gt;</code>로 불러옵니다. 모듈은 이미 defer 상태라 <code>defer</code>가 필요 없습니다.</li>
+    </ol>
+
+    <pre><code>&lt;link rel="stylesheet" href="/assets/video-ads.css" /&gt;
+&lt;script type="module" src="/assets/video-ads.js"&gt;&lt;/script&gt;
+
+&lt;video-player&gt;
+  &lt;video-skin&gt;
+    &lt;video src="/media/video.mp4" playsinline&gt;&lt;/video&gt;
+    &lt;media-ads src="/ads.json"&gt;&lt;/media-ads&gt;
+  &lt;/video-skin&gt;
+&lt;/video-player&gt;</code></pre>
+
+    <p>
+      번들러를 쓰는 프로젝트라면 같은 파일을 <code>import '/assets/video-ads.js'</code>처럼 진입점에서 한 번
+      불러오면 됩니다. 이 파일은 부수 효과로 엘리먼트를 등록하므로 이름을 가져올 필요가 없습니다.
+    </p>
+
+    <h2 id="cdn">CDN — 플레이어는 CDN, 광고는 로컬</h2>
+
+    <p>
+      플레이어(<code>@videojs/html</code>)는 npm에 배포되어 있어 jsDelivr에서 바로 받을 수 있습니다. 배포되지 않은
+      것은 광고 코드뿐이므로, 이 방식에서 여러분이 호스팅할 파일은 10 KB짜리 <code>videojs-ads.js</code>와 2 KB짜리
+      CSS가 전부입니다.
+    </p>
+
+    <pre><code>&lt;link rel="stylesheet" href="/assets/video-ads.css" /&gt;
+
+&lt;!-- 플레이어가 먼저, 광고가 나중입니다. --&gt;
+&lt;script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/@videojs/html@10.0.0-beta.26/cdn/video.js"
+&gt;&lt;/script&gt;
+&lt;script type="module" src="/assets/videojs-ads.js"&gt;&lt;/script&gt;
+
+&lt;video-player&gt;
+  &lt;video-skin&gt;
+    &lt;video src="/media/video.mp4" playsinline&gt;&lt;/video&gt;
+    &lt;media-ads src="/ads.json"&gt;&lt;/media-ads&gt;
+  &lt;/video-skin&gt;
+&lt;/video-player&gt;</code></pre>
+
+    <p class="note">
+      <strong>스크립트 순서를 지키세요.</strong> 광고 스크립트를 플레이어보다 먼저 두면 광고가 실행되지 않습니다.
+      <code>&lt;media-ads&gt;</code>가 먼저 업그레이드되어 아직 존재하지 않는 플레이어에게 컨텍스트를 요청하고, 뒤늦게
+      나타난 플레이어는 그 요청을 다시 받아주지 않기 때문입니다. 광고 목록은 정상적으로 내려받아지므로 네트워크 탭만
+      봐서는 원인이 드러나지 않습니다.
+    </p>
+
+    <p>
+      버전은 고정하는 편이 안전합니다. 위 URL의 <code>@10.0.0-beta.26</code>을 빼면 jsDelivr가 언제나 최신 버전을
+      내려주고, 플레이어가 예고 없이 바뀝니다. 이 문서를 쓰는 시점의 최신 버전이 <code>10.0.0-beta.26</code>이며, 이
+      저장소의 플레이어도 같은 버전입니다.
+    </p>
+
+    <p>
+      플레이어 번들의 선택지는 <code>video.js</code> 하나가 아닙니다. 스킨과 기능 구성이 다른
+      <code>video-minimal.js</code>, 스킨이 없는 <code>video-headless.js</code>, 오디오용 번들이 각각 있습니다 —
+      <a href="./#configure">플레이어 설정과 제어</a>의 번들 선택 항목을 참고하세요.
+    </p>
+
+    <h2 id="verify">설치 확인</h2>
+
+    <p>페이지를 열고 콘솔에서 세 가지를 확인하면 설치가 끝났는지 알 수 있습니다.</p>
+
+    <pre><code>// 1. 두 엘리먼트가 등록되었는가
+customElements.get('video-player');   // class …
+customElements.get('media-ads');      // class …
+
+// 2. 플레이어가 미디어에 붙었는가 (null이면 defer 누락을 의심)
+document.querySelector('video-player').store.target;
+
+// 3. 광고 목록을 받아왔는가
+//    네트워크 탭에서 ads.json 요청이 200인지 확인</code></pre>
+
+    <p>
+      마지막은 눈으로 확인하는 편이 빠릅니다. 재생을 누르면 본편 대신 광고가 먼저 재생되고, 좌측 하단에
+      <code>AD 0:01 / 0:10</code>, 우측 하단에 건너뛰기 버튼이 보이면 정상입니다.
+    </p>
+
+    <h2 id="trouble">문제 해결</h2>
+
+    <h3>페이지가 비어 있고 콘솔에 404가 보입니다</h3>
+
+    <p>
+      <code>dist/</code>가 아직 없는 경우입니다. 빌드 산출물은 커밋되지 않으므로
+      <code>pnpm -F @videojs/ads build:cdn</code>을 먼저 실행하세요.
+    </p>
+
+    <h3>컨트롤은 보이는데 아무것도 반응하지 않습니다</h3>
+
+    <p>
+      클래식 스크립트에서 <code>defer</code>를 빠뜨린 경우입니다.
+      <code>document.querySelector('video-player').store.target</code>이 <code>null</code>이면 이 문제입니다.
+    </p>
+
+    <h3>플레이어는 뜨는데 광고만 실행되지 않습니다</h3>
+
+    <p>
+      CDN 방식이라면 스크립트 순서를 확인하세요 — 플레이어가 먼저여야 합니다. 순서가 맞다면 광고 데이터 쪽입니다.
+      요청 실패, 잘못된 JSON, 필수 필드가 빠진 항목은 모두 빈 목록이 되고, 빈 목록은 광고 없음을 뜻합니다.
+      <a href="./ads.html#data">광고 데이터</a>에서 필수 필드를 확인하세요.
+    </p>
+
+    <h3>HTML 파일을 더블클릭해서 열었더니 아무것도 뜨지 않습니다</h3>
+
+    <p>
+      <code>file://</code>로 연 페이지에서는 브라우저가 모듈 스크립트 로드와 <code>fetch</code>를 막습니다. 광고
+      목록도 같은 이유로 받아올 수 없습니다. 로컬에서 볼 때도 HTTP로 서빙하세요.
+    </p>
+
+    <pre><code>cd examples
+python3 -m http.server 5192</code></pre>
+
+    <h3>플레이어 영역이 납작하게 보입니다</h3>
+
+    <p>
+      <code>&lt;video-skin&gt;</code>은 컨테이너를 채우므로 높이가 없는 컨테이너 안에서는 무너집니다.
+      <code>display: block</code>과 <code>aspect-ratio</code>를 주세요.
+    </p>
+
+    <footer>
+      <p>
+        위의 파일 크기와 동작은 이 저장소의 빌드를 브라우저에서 직접 확인한 값입니다.
+      </p>
+      <p><a href="./">플레이어 설정과 제어</a> · <a href="./ads.html">프리롤 광고 실행하기</a> · <a href="../ads/">실행 가능한 예제</a></p>
+    </footer>
+  </body>
+</html>

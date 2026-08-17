@@ -54,43 +54,15 @@
 
     <h2 id="load">어떤 파일을 불러올까</h2>
 
-    <table>
-      <thead>
-        <tr>
-          <th>파일</th>
-          <th>담고 있는 것</th>
-          <th>불러오는 방법</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>video-ads.iife.js</code></td>
-          <td>플레이어와 광고</td>
-          <td><code>&lt;script defer&gt;</code></td>
-        </tr>
-        <tr>
-          <td><code>video-ads.js</code></td>
-          <td>플레이어와 광고</td>
-          <td><code>&lt;script type="module"&gt;</code></td>
-        </tr>
-        <tr>
-          <td><code>videojs-ads.js</code></td>
-          <td>광고만</td>
-          <td><code>&lt;script type="module"&gt;</code>, 이미 불러오고 있는 플레이어 옆에</td>
-        </tr>
-      </tbody>
-    </table>
-
     <p>
-      셋 다 파일 하나로 끝나며, 옆에 함께 배포해야 할 청크가 없습니다. 어느 것을 쓰든 오버레이 스타일을 담은
+      불러올 파일은 세 가지 — 플레이어와 광고를 함께 담은 <code>video-ads.iife.js</code>와
+      <code>video-ads.js</code>, 광고만 담은 <code>videojs-ads.js</code> — 이고, 어느 것을 쓰든 오버레이 스타일을 담은
       <code>video-ads.css</code>와 짝지으면 됩니다.
     </p>
 
-    <p class="note">
-      <strong>클래식 스크립트에 <code>defer</code>는 필수</strong>이며 장식이 아닙니다. 클래식 스크립트는 파서가 아직
-      문서를 읽는 중에 실행되므로, <code>defer</code>가 없으면 <code>&lt;video-player&gt;</code>가 자식
-      <code>&lt;video&gt;</code>가 생기기 전에 업그레이드되어 붙을 미디어를 찾지 못합니다 — 컨트롤은 그려지지만 반응하지
-      않습니다. 모듈 스크립트는 이미 defer 상태입니다. 스크립트를 <code>&lt;body&gt;</code> 끝에 두는 방법도 통합니다.
+    <p>
+      선택 기준과 설치 절차, <code>defer</code>와 스크립트 순서처럼 방식마다 지켜야 할 조건은
+      <a href="./install.html">설치 가이드</a>에 정리되어 있습니다.
     </p>
 
     <h2 id="data">광고 데이터</h2>
@@ -341,7 +313,7 @@ const overlay = new AdsOverlay(container, {
     </p>
 
     <footer>
-      <p><a href="./">플레이어 설정과 제어</a> · <a href="../ads/">실행 가능한 예제</a></p>
+      <p><a href="./install.html">설치 가이드</a> · <a href="./">플레이어 설정과 제어</a> · <a href="../ads/">실행 가능한 예제</a></p>
     </footer>
   </body>
 </html>
